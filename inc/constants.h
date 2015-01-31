@@ -1,0 +1,11 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#define NAL_UNIT_START 0x000003
+
+#define DEFAULT_WIDTH 640
+#define DEFAULT_HEIGHT 480
+#define DEFAULT_DEVICE "/dev/video0"
+#define DEFAULT_NUMBUFS 8
+
+#endif

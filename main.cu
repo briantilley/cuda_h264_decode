@@ -2,36 +2,23 @@
 #include <iostream>
 #include <stdint.h>
 
+#include "inc/constants.h"
+#include "inc/RBSP_structs.h"
+#include "inc/types.h"
 #include "inc/classes.h"
 
 using std::cout;
-
-bool     flag( BitPos pos )
-{
-	return 0;
-}
-
-uint8_t  byte( BitPos pos )
-{
-	return 0;
-}
-
-uint32_t uv( BitPos pos, int numBits )
-{
-	return 0;
-}
-
-uint32_t uev( BitPos pos )
-{
-	return 0;
-}
-
-int32_t  sev( BitPos pos )
-{
-	return 0;
-}
+using std::endl;
+using std::string;
 
 int main( int argc, char** argv )
 {
+	uint8_t test[ 4 ] = { 0x00, 0xb5, 0x4e, 0x32 };
+	H264parser parser = H264parser( );
+
+	parser.setPos( BitPos( ( uint8_t* )&test[ 0 ] ) );
+
+	cout << "sev( ): " << parser.sev( ) << endl;
+
 	return 0;
 }
