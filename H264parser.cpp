@@ -20,16 +20,50 @@ BitPos H264parser::getPos( void )
 void H264parser::setPos( BitPos in_pos )
 { pos = in_pos; }
 
-void H264parser::update( nal_type type ) { update( pos, type ); }
-void H264parser::update( BitPos in_pos, nal_type type )
+void H264parser::parseFrame( void ) { parseFrame( pos ); }
+void H264parser::parseFrame( BitPos in_pos )
 {
 	pos = in_pos;
-	// ...
-}
 
-void H264parser::populate( CUVIDPICPARAMS &picPms )
-{
-	// ...
+	uint8_t nal_ref_idc = 0;
+	uint8_t nal_type    = 0;
+	uint32_t comp_buf   = 0;
+
+	while( 1 != comp_buf )
+	{
+		comp_buf <<= 8;
+		comp_buf  += pos.readBits( 8 );
+	}
+
+	uv( 1 ); // forbidden zero bit
+	
+	nal_ref_idc = uv( 2 );
+	nal_type    = uv( 5 );
+
+	switch( nal_type )
+	{
+		case 0x01:
+
+			sliceHeader( nal_ref_idc, nal_type );
+
+		break;
+		case 0x05:
+
+			sliceHeader( nal_ref_idc, nal_type );
+
+		break;
+		case 0x07:
+
+			seqPmSet( nal_ref_idc, nal_type );
+
+		break;
+		case 0x08:
+
+			picPmSet( nal_ref_idc, nal_type );
+
+		break;
+	}
+
 }
 
 bool H264parser::flag( void )

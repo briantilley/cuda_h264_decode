@@ -196,11 +196,11 @@ struct _slice_header
 	
 	uint32_t           num_ref_idx_l1_active_minus1;
 
-	ref_pic_list_mod*  pRefPicListMod;
+	ref_pic_list_mod*  pRPLM;
 
-	pred_weight_table* pPredWeightTable;
+	pred_weight_table* pPWT;
 
-	dec_ref_pic_mark*  pDecRefPicMark;
+	dec_ref_pic_mark*  pDRPM;
 	
 	uint32_t           cabac_init_idc;
 

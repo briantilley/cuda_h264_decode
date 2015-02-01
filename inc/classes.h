@@ -44,19 +44,22 @@ class H264parser
 		BitPos getPos( void );
 		void setPos( BitPos );
 
-		// return type? seek( void ), seek( BitPos )
+		void parseFrame( void );
+		void parseFrame( BitPos );
 
-		void update( nal_type );
-		void update( BitPos, nal_type );
-
-		void populate( CUVIDPICPARAMS& );
+	private:
 
 		bool     flag( void );
 		uint32_t uv  ( int32_t );
 		uint32_t uev ( void );
 		int32_t  sev ( void );
 
-	private:
+		void seqPmSet( uint8_t, uint8_t );
+		void picPmSet( uint8_t, uint8_t );
+		void sliceHeader( uint8_t, uint8_t );
+		void refPicListMod( uint8_t, uint8_t );
+		void predWeightTable( uint8_t, uint8_t );
+		void decRefPicMark( uint8_t, uint8_t );
 
 		BitPos pos;
 		
@@ -92,12 +95,12 @@ class V4L2stream
 		void setBufs( int32_t );
 		int32_t getBufs( void );
 
-		void initialize( void );
+		void init( void );
 
 		void on( void );
 		void off( void );
 
-		void getFrame( uint8_t* ); // alloc input ptr before using
+		void getFrame( int ( * )( uint8_t*, uint32_t ) );
 
 	private:
 

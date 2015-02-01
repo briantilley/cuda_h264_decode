@@ -2,6 +2,7 @@
 #include <string.h>
 #include <iostream>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "inc/constants.h"
 #include "inc/types.h"
@@ -16,7 +17,8 @@ V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_nu
 
 V4L2stream::~V4L2stream( void )
 {
-	// ...
+	off( );
+	close( fd );
 }
 
 void V4L2stream::setWidth( int32_t in_width )
@@ -39,7 +41,7 @@ void V4L2stream::setBufs( int32_t in_numBufs )
 int32_t V4L2stream::getBufs( void )
 { return numBufs; }
 
-void V4L2stream::initialize( void )
+void V4L2stream::init( void )
 {
 	fd = open( device.c_str( ), O_RDWR );
 	if( -1 == fd )
@@ -141,7 +143,7 @@ void V4L2stream::off( void )
 	}
 }
 
-void V4L2stream::getFrame( uint8_t* dest )
+void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
 	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
 	{
@@ -149,9 +151,8 @@ void V4L2stream::getFrame( uint8_t* dest )
 		return;
 	}
 
-	buf_array[ buffer.index ].length = buffer.length;
-		
-	memcpy( (void* )dest, ( void* )buf_array[ buffer.index ].start, buf_array[ buffer.index ].length );
+	if ( -1 == ps_callback( buf_array[ buffer.index ].start, buffer.length ) )
+		cout << "frame processing callback failed" << endl;
 
 	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
 	{

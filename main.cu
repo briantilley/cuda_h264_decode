@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "inc/constants.h"
 #include "inc/RBSP_structs.h"
@@ -13,12 +14,11 @@ using std::string;
 
 int main( int argc, char** argv )
 {
-	uint8_t test[ 4 ] = { 0x00, 0xb5, 0x4e, 0x32 };
-	H264parser parser = H264parser( );
-
-	parser.setPos( BitPos( ( uint8_t* )&test[ 0 ] ) );
-
-	cout << "sev( ): " << parser.sev( ) << endl;
+	V4L2stream stream = V4L2stream( );
+	stream.init( );
+	stream.on( );
+	sleep( 5 );
+	stream.off( );
 
 	return 0;
 }
