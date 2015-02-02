@@ -20,50 +20,65 @@ BitPos H264parser::getPos( void )
 void H264parser::setPos( BitPos in_pos )
 { pos = in_pos; }
 
-void H264parser::parseFrame( void ) { parseFrame( pos ); }
-void H264parser::parseFrame( BitPos in_pos )
+void H264parser::parseFrame( uint32_t length ) { parseFrame( pos, length ); }
+void H264parser::parseFrame( BitPos in_pos, uint32_t length )
 {
 	pos = in_pos;
 
-	uint8_t nal_ref_idc = 0;
-	uint8_t nal_type    = 0;
-	uint32_t comp_buf   = 0;
+	const uint8_t* start = pos.getByte( );
+	uint8_t nal_ref_idc;
+	uint8_t nal_type;
+	uint32_t comp_buf;
 
-	while( 1 != comp_buf )
+	while( true )
 	{
-		comp_buf <<= 8;
-		comp_buf  += pos.readBits( 8 );
+		pos.setMask( 0x80 );
+
+		nal_ref_idc = 0;
+		nal_type    = 0;
+		comp_buf    = 0;
+
+		while( 1 != comp_buf )
+		{
+			comp_buf <<= 8;
+			comp_buf  += pos.readByte( );
+
+			if( pos.getByte( ) >= ( start + length ) ) return; // end of frame
+		}
+
+		uv( 1 ); // forbidden zero bit
+		
+		nal_ref_idc = uv( 2 );
+		nal_type    = uv( 5 );
+
+		switch( nal_type )
+		{
+			case 0x01:
+
+				// std::cerr << ".";
+				sliceHeader( nal_ref_idc, nal_type );
+
+			break;
+			case 0x05:
+
+				// std::cerr << ".";
+				sliceHeader( nal_ref_idc, nal_type );
+
+			break;
+			case 0x07:
+
+				// std::cerr << "SPS" << endl;
+				seqPmSet( nal_ref_idc, nal_type );
+
+			break;
+			case 0x08:
+
+				// std::cerr << "PPS" << endl;
+				picPmSet( nal_ref_idc, nal_type );
+
+			break;
+		}
 	}
-
-	uv( 1 ); // forbidden zero bit
-	
-	nal_ref_idc = uv( 2 );
-	nal_type    = uv( 5 );
-
-	switch( nal_type )
-	{
-		case 0x01:
-
-			sliceHeader( nal_ref_idc, nal_type );
-
-		break;
-		case 0x05:
-
-			sliceHeader( nal_ref_idc, nal_type );
-
-		break;
-		case 0x07:
-
-			seqPmSet( nal_ref_idc, nal_type );
-
-		break;
-		case 0x08:
-
-			picPmSet( nal_ref_idc, nal_type );
-
-		break;
-	}
-
 }
 
 bool H264parser::flag( void )
@@ -120,6 +135,37 @@ int32_t  H264parser::sev ( void ) // not working
 		value *= -1;
 
 	return value;
+}
+
+bool H264parser::more_rbsp_data( void )
+{
+	BitPos pos_copy = BitPos( pos );
+	uint32_t comp_buf = 0;
+	uint8_t diff      = 0;
+
+	while( 1 != comp_buf )
+	{
+		comp_buf <<= 8;
+		comp_buf  += pos.readByte( );
+	}
+
+	pos.setByte( pos.getByte( ) - 4 );
+	pos.setMask( 0x01 );
+
+	while( 2 != comp_buf )
+	{
+		comp_buf >>= 1;
+		comp_buf  |= pos.readBitReverse( ) << 1;
+		comp_buf  &= 0x03;
+	}
+
+	diff = pos.getByte( ) - pos_copy.getByte( );
+	pos = BitPos( pos_copy );
+
+	if( diff >= 2 )
+		return true;
+	else
+		return false;
 }
 
 H264parser::~H264parser( void ) { }

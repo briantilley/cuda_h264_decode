@@ -24,7 +24,7 @@ struct _seq_param_set
 	bool               qpprime_y_zero_transform_bypass_flag;
 	bool               seq_scaling_matrix_present_flag;
 
-	bool*              seq_scaling_list_present_flag;
+	bool*              seq_scaling_list_present_flag = NULL;
 
 	uint32_t           log2_max_frame_num_minus4;
 	uint32_t           pic_order_cnt_type;
@@ -36,7 +36,7 @@ struct _seq_param_set
 	int32_t            offset_for_top_to_bottom_field;
 	uint32_t           num_ref_frames_in_pic_order_cnt_cycle;
 
-	int32_t*           offset_for_ref_frame;
+	int32_t*           offset_for_ref_frame = NULL;
 	
 	uint32_t           max_num_ref_frames;
 	bool               gaps_in_frame_num_value_allowed_flag;
@@ -71,17 +71,17 @@ struct _pic_param_set
 
 	uint32_t           slice_group_map_type;
 	
-	uint32_t*          run_length_minus1;
+	uint32_t*          run_length_minus1 = NULL;
 
-	uint32_t*          top_left;
-	uint32_t*          bottom_right;
+	uint32_t*          top_left = NULL;
+	uint32_t*          bottom_right = NULL;
 	
 	bool               slice_group_change_direction_flag;
 	uint32_t           slice_group_change_rate_minus1;
 
 	uint32_t           pic_size_in_map_units_minus1;
 
-	uint32_t*          slice_group_id;
+	uint32_t*          slice_group_id = NULL;
 	
 	uint32_t           num_ref_idx_l0_default_active_minus1;
 	uint32_t           num_ref_idx_l1_default_active_minus1;
@@ -97,7 +97,7 @@ struct _pic_param_set
 	bool               transform_8x8_mode_flag;
 	bool               pic_scaling_matrix_present_flag;
 
-	// bool*              pic_scaling_matrix_present_flag;
+	bool*              pic_scaling_list_present_flag;
 
 	int32_t            second_chroma_qp_index_offset;
 };
@@ -125,23 +125,23 @@ struct _pred_weight_table
 	
 	bool               luma_weight_l0_flag;
 	
-	int32_t*           luma_weight_l0;
-	int32_t*           luma_offset_l0;
+	int32_t*           luma_weight_l0 = NULL;
+	int32_t*           luma_offset_l0 = NULL;
 	
 	bool               chroma_weight_l0_flag;
 	
-	int32_t**          chroma_weight_l0;
-	int32_t**          chroma_offset_l0;
+	int32_t**          chroma_weight_l0 = NULL;
+	int32_t**          chroma_offset_l0 = NULL;
 	
 	bool               luma_weight_l1_flag;
 	
-	int32_t*           luma_weight_l1;
-	int32_t*           luma_offset_l1;
+	int32_t*           luma_weight_l1 = NULL;
+	int32_t*           luma_offset_l1 = NULL;
 	
 	bool               chroma_weight_l1_flag;
 	
-	int32_t**          chroma_weight_l1;
-	int32_t**          chroma_offset_l1;
+	int32_t**          chroma_weight_l1 = NULL;
+	int32_t**          chroma_offset_l1 = NULL;
 };
 typedef struct _pred_weight_table pred_weight_table;
 
@@ -196,11 +196,11 @@ struct _slice_header
 	
 	uint32_t           num_ref_idx_l1_active_minus1;
 
-	ref_pic_list_mod*  pRPLM;
+	ref_pic_list_mod*  pRPLM = NULL;
 
-	pred_weight_table* pPWT;
+	pred_weight_table* pPWT = NULL;
 
-	dec_ref_pic_mark*  pDRPM;
+	dec_ref_pic_mark*  pDRPM = NULL;
 	
 	uint32_t           cabac_init_idc;
 

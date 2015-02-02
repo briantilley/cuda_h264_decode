@@ -33,23 +33,62 @@ void BitPos::setMask( uint8_t in_mask )
 void BitPos::advance( void )
 {
 	mask >>= 1;
-	if(!mask) { ++byte; mask = 0x80; }
+	if( !mask ) { ++byte; mask = 0x80; }
+}
+
+void BitPos::retreat( void )
+{
+	mask <<= 1;
+	if( !mask ) { --byte; mask = 0x01; }
 }
 
 uint32_t BitPos::readBits( int numBits )
 {
 	uint32_t retVal = 0;
 
+	if( 8 == numBits && 0x80 == mask ) // optimize a simple byte read
+	{
+		retVal = *byte;
+		++byte;
+
+		return retVal;
+	}
+
 	retVal |= ( *byte & mask ) ? 1 : 0;
 	advance( );
 
-	for( int i = 0; i < numBits - 1; ++i )
+	numBits -= 1;
+
+	for( int i = 0; i < numBits; ++i )
 	{
 		retVal <<= 1;
 
 		retVal += ( *byte & mask ) ? 1 : 0;
 		advance( );
 	}
+
+	return retVal;
+}
+
+// use this if byte-alignment is required/assumed
+uint8_t BitPos::readByte( void ) // readBits is crazy inefficient reading 1 byte
+{
+	uint8_t retVal = 0;
+
+	mask = 0x80;
+
+	retVal = *byte;
+	++byte;
+
+	return retVal;
+}
+
+bool BitPos::readBitReverse( void )
+{
+	bool retVal = false;
+
+	retVal = ( *byte & mask ) ? 1 : 0;
+	retreat( );
 
 	return retVal;
 }

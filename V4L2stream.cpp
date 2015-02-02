@@ -145,6 +145,7 @@ void V4L2stream::off( void )
 
 void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
+	
 	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
 	{
 		std::cerr << "error while retrieving frame" << endl;
@@ -154,13 +155,14 @@ void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 	if ( -1 == ps_callback( buf_array[ buffer.index ].start, buffer.length ) )
 		cout << "frame processing callback failed" << endl;
 
-	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
+	if( -1 == xioctl( fd, VIDIOC_QBUF, &buffer ) )
 	{
 		std::cerr << "error while releasing buffer" << endl;
 		return;
 	}
 
 	++buffer.index; buffer.index %= request_bufs.count;
+
 }
 
 int32_t V4L2stream::xioctl( int32_t file_desc, int32_t request, void* argp )

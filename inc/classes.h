@@ -20,10 +20,15 @@ class BitPos
 		uint8_t getMask( void );
 		void setMask( uint8_t  );
 
-		void advance( void );
 		uint32_t readBits( int32_t numBits );
+		uint8_t readByte( void );
+
+		bool readBitReverse( void );
 
 	private:
+
+		void advance( void );
+		void retreat( void );
 
 		uint8_t* byte;
 		uint8_t  mask;
@@ -44,8 +49,8 @@ class H264parser
 		BitPos getPos( void );
 		void setPos( BitPos );
 
-		void parseFrame( void );
-		void parseFrame( BitPos );
+		void parseFrame( uint32_t );
+		void parseFrame( BitPos, uint32_t );
 
 	private:
 
@@ -53,6 +58,8 @@ class H264parser
 		uint32_t uv  ( int32_t );
 		uint32_t uev ( void );
 		int32_t  sev ( void );
+
+		bool more_rbsp_data( void );
 
 		void seqPmSet( uint8_t, uint8_t );
 		void picPmSet( uint8_t, uint8_t );

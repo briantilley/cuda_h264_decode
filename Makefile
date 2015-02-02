@@ -14,27 +14,31 @@ INC=-I/usr/local/cuda-6.5/include
 LIBS=-lnvcuvid -lcuda -lcudart
 LIB_PATHS=-L/usr/lib/nvidia-340
 
+#flags
+FLAGS=-std=gnu++11
+CUFLAGS=-std=c++11
+
 #targets
-all: $(MAIN) classes
-	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(LIBS)
+all: classes main
+	@# runs classes and main targets in sequence
 
 main: $(MAIN)
-	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(LIBS)
+	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(LIBS) $(CUFLAGS)
 
 classes: bitpos parser v4l2 nalparser
 	@# will automatically make targets
 
 bitpos: BitPos.cpp
-	$(STD) BitPos.cpp -c $(INC) $(LIB_PATHS) $(LIBS)
+	$(STD) BitPos.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
 
 parser: H264parser.cpp
-	$(STD) H264parser.cpp -c $(INC) $(LIB_PATHS) $(LIBS)
+	$(STD) H264parser.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
 
 nalparser: NALparser.cpp
-	$(STD) NALparser.cpp -c $(INC) $(LIB_PATHS) $(LIBS)
+	$(STD) NALparser.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
 
 v4l2: V4L2stream.cpp
-	$(STD) V4L2stream.cpp -c $(INC) $(LIB_PATHS) $(LIBS)
+	$(STD) V4L2stream.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
 
 run: $(OUTPUT)
 	@./$(OUTPUT)
