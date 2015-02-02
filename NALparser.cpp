@@ -12,9 +12,6 @@ using std::cout;
 using std::endl;
 using std::string;
 
-// using std::ceil;
-// using std::log2;
-
 void H264parser::seqPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 {
 	SPS.profile_idc                              = uv( 8 );
@@ -160,8 +157,6 @@ void H264parser::picPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 
 	if( more_rbsp_data( ) )
 	{
-		std::cerr << "more rbsp data" << endl;
-
 		PPS.transform_8x8_mode_flag              = uv( 1 );
 		PPS.pic_scaling_matrix_present_flag      = uv( 1 );
 
@@ -176,27 +171,260 @@ void H264parser::picPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 		}
 
 		PPS.second_chroma_qp_index_offset        = sev( );
-
-		std::cerr << "second chroma: " << PPS.second_chroma_qp_index_offset << endl;
 	}
 }
 
 void H264parser::sliceHeader( uint8_t nal_ref_idc, uint8_t nal_type )
 {
-	// ...
+	SH.first_mb_in_slice                         = uev( );
+	SH.slice_type                                = uev( );
+	SH.pic_parameter_set_id                      = uev( );
+
+	if( SPS.separate_colour_plane_flag )
+		SH.colour_plane_id                       = uv( 2 );
+
+	SH.frame_num                                 = uv( SPS.log2_max_frame_num_minus4 + 4 );
+
+	if( SPS.frame_mbs_only_flag )
+	{
+		SH.field_pic_flag                        = uv( 1 );
+
+		if( SH.field_pic_flag )
+			SH.bottom_field_flag                 = uv( 1 );
+	}
+
+	if( 5 == nal_type )
+		SH.idr_pic_id                            = uev( );
+
+	if( !SPS.pic_order_cnt_type )
+	{
+		SH.pic_order_cnt_lsb                     = uv( SPS.log2_max_pic_order_cnt_lsb_minus4 + 4 );
+
+		if( PPS.bottom_field_pic_order_in_frame_present_flag && !SH.field_pic_flag )
+			SH.delta_pic_order_cnt_bottom        = sev( );
+	}
+
+	else if( 1 == SPS.pic_order_cnt_type && !SPS.delta_pic_order_always_zero_flag )
+	{
+		SH.delta_pic_order_cnt[ 0 ]              = sev( );
+
+		if( PPS.bottom_field_pic_order_in_frame_present_flag && !SH.field_pic_flag )
+			SH.delta_pic_order_cnt[ 1 ]          = sev( );
+	}
+
+	if( PPS.redundant_pic_cnt_present_flag )
+		SH.redundant_pic_cnt                     = uev( );
+
+	if( 1 == SH.slice_type % 5 )
+		SH.direct_spatial_mv_pred_flag           = uv( 1 );
+
+	if( 0 == SH.slice_type % 5 || 1 == SH.slice_type % 5 || 3 == SH.slice_type % 5 )
+	{
+		SH.num_ref_idx_active_override_flag      = uv( 1 );
+
+		if( SH.num_ref_idx_active_override_flag )
+		{
+			SH.num_ref_idx_l0_active_minus1      = uev( );
+
+			if( 1 == SH.slice_type % 5 )
+				SH.num_ref_idx_l1_active_minus1  = uev( );
+		}
+	}
+
+	refPicListMod( nal_ref_idc, nal_type );
+	predWeightTable( nal_ref_idc, nal_type );
+	decRefPicMark( nal_ref_idc, nal_type );
+
+	if( PPS.entropy_coding_mode_flag && 2 != SH.slice_type % 5 && 4 != SH.slice_type % 5)
+		SH.cabac_init_idc                        = uev( );
+
+	SH.slice_qp_delta                            = sev( );
+
+	if( 3 == SH.slice_type % 5 || 4 == SH.slice_type % 5 )
+	{
+		if( 3 == SH.slice_type % 5 )
+			SH.sp_for_switch_flag                = uv( 1 );
+
+		SH.slice_qs_delta                        = sev( );
+	}
+
+	if( PPS.deblocking_filter_control_present_flag )
+	{
+		SH.disable_deblocking_filter_idc           = uev( );
+
+		if( 1 != SH.disable_deblocking_filter_idc )
+		{
+			SH.slice_alpha_c0_offset_div2        = sev( );
+			SH.slice_beta_offset_div2            = sev( );
+		}
+	}
+
+	if( PPS.num_slice_groups_minus1 && PPS.slice_group_map_type >= 3 && PPS.slice_group_map_type <= 5 )
+	{
+		uint32_t PicSizeInMapUnits = ( SPS.pic_width_in_mbs_minus1 + 1 ) * ( SPS.pic_height_in_map_units_minus1 + 1 );
+		uint32_t SliceGroupChangeRate = PPS.slice_group_change_rate_minus1 + 1;
+		uint32_t tempVal = ceil( log2( PicSizeInMapUnits / SliceGroupChangeRate + 1 ) );
+
+		SH.slice_group_change_cycle              = uv( tempVal );
+	}
 }
 
 void H264parser::refPicListMod( uint8_t nal_ref_idc, uint8_t nal_type )
 {
-	// ...
+	if( 2 != SH.slice_type % 5 && 4 != SH.slice_type % 5 )
+	{
+		SH.pRPLM->ref_pic_list_modification_flag_l0   = uv( 1 );
+
+		if( SH.pRPLM->ref_pic_list_modification_flag_l0 )
+		{
+			do
+			{
+				SH.pRPLM->modification_of_pic_nums_idc   = uev( );
+
+				if( 1 >= SH.pRPLM->modification_of_pic_nums_idc )
+					SH.pRPLM->abs_diff_pic_num_minus1   = uev( );
+				else if( 2 == SH.pRPLM->modification_of_pic_nums_idc )
+					SH.pRPLM->long_term_pic_num         = uev( );
+			
+			}while( 3 != SH.pRPLM->modification_of_pic_nums_idc );
+		}
+	}
+
+	if( 1 == SH.slice_type % 5 )
+	{
+		SH.pRPLM->ref_pic_list_modification_flag_l1   = uv( 1 );
+
+		if( SH.pRPLM->ref_pic_list_modification_flag_l0 )
+		{
+			do
+			{
+				SH.pRPLM->modification_of_pic_nums_idc   = uev( );
+
+				if( 1 >= SH.pRPLM->modification_of_pic_nums_idc )
+					SH.pRPLM->abs_diff_pic_num_minus1   = uev( );
+				else if( 2 == SH.pRPLM->modification_of_pic_nums_idc )
+					SH.pRPLM->long_term_pic_num         = uev( );
+			
+			}while( 3 != SH.pRPLM->modification_of_pic_nums_idc );
+		}
+	}
 }
 
 void H264parser::predWeightTable( uint8_t nal_ref_idc, uint8_t nal_type )
 {
-	// ...
+
+	SH.pPWT->luma_log2_weight_denom              = uev( );
+
+	uint32_t ChromaArrayType = ( !SPS.separate_colour_plane_flag ) ? SPS.chroma_format_idc : 0;
+	
+	if( ChromaArrayType )
+		SH.pPWT->chroma_log2_weight_denom        = uev( );
+
+	SH.pPWT->luma_weight_l0 = ( int32_t* )realloc( SH.pPWT->luma_weight_l0, SH.num_ref_idx_l0_active_minus1 * sizeof( int32_t ) );
+	SH.pPWT->luma_offset_l0 = ( int32_t* )realloc( SH.pPWT->luma_offset_l0, SH.num_ref_idx_l0_active_minus1 * sizeof( int32_t ) );
+
+	SH.pPWT->chroma_weight_l0 = ( int32_t** )realloc( SH.pPWT->chroma_weight_l0, SH.num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
+	SH.pPWT->chroma_offset_l0 = ( int32_t** )realloc( SH.pPWT->chroma_offset_l0, SH.num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
+
+	for ( int i = 0; i < SH.num_ref_idx_l0_active_minus1; ++i )
+	{
+		SH.pPWT->luma_weight_l0_flag             = uv( 1 );
+
+		if( SH.pPWT->luma_weight_l0_flag )
+		{
+			SH.pPWT->luma_weight_l0[ i ]         = sev( );
+			SH.pPWT->luma_offset_l0[ i ]         = sev( );
+		}
+
+		if( ChromaArrayType )
+		{
+			SH.pPWT->chroma_weight_l0_flag       = uv( 1 );
+
+			if( SH.pPWT->chroma_weight_l0_flag )
+			{
+				SH.pPWT->chroma_weight_l0[ i ] = ( int32_t* )realloc( SH.pPWT->chroma_weight_l0[ i ], 2 * sizeof( int32_t ) );
+
+				SH.pPWT->chroma_offset_l0[ i ] = ( int32_t* )realloc( SH.pPWT->chroma_offset_l0[ i ], 2 * sizeof( int32_t ) );
+
+				for( int j = 0; j < 2; ++j )
+				{
+					SH.pPWT->chroma_weight_l0[ i ][ j ]   = sev( );
+					SH.pPWT->chroma_offset_l0[ i ][ j ]   = sev( );
+				}
+			}
+		}
+	}
+
+	if( 1 == SH.slice_type % 5 )
+	{
+		SH.pPWT->luma_weight_l1 = ( int32_t* )realloc( SH.pPWT->luma_weight_l1, SH.num_ref_idx_l1_active_minus1 * sizeof( int32_t ) );
+		SH.pPWT->luma_offset_l1 = ( int32_t* )realloc( SH.pPWT->luma_offset_l1, SH.num_ref_idx_l1_active_minus1 * sizeof( int32_t ) );
+
+		SH.pPWT->chroma_weight_l1 = ( int32_t** )realloc( SH.pPWT->chroma_weight_l1, SH.num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
+		SH.pPWT->chroma_offset_l1 = ( int32_t** )realloc( SH.pPWT->chroma_offset_l1, SH.num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
+
+		for ( int i = 0; i < SH.num_ref_idx_l1_active_minus1; ++i )
+		{
+			SH.pPWT->luma_weight_l1_flag             = uv( 1 );
+
+			if( SH.pPWT->luma_weight_l1_flag )
+			{
+				SH.pPWT->luma_weight_l1[ i ]         = sev( );
+				SH.pPWT->luma_offset_l1[ i ]         = sev( );
+			}
+
+			if( ChromaArrayType )
+			{
+				SH.pPWT->chroma_weight_l1_flag       = uv( 1 );
+
+				if( SH.pPWT->chroma_weight_l1_flag )
+				{
+					SH.pPWT->chroma_weight_l1[ i ] = ( int32_t* )realloc( SH.pPWT->chroma_weight_l1[ i ], 2 * sizeof( int32_t ) );
+
+					SH.pPWT->chroma_offset_l1[ i ] = ( int32_t* )realloc( SH.pPWT->chroma_offset_l1[ i ], 2 * sizeof( int32_t ) );
+
+					for( int j = 0; j < 2; ++j )
+					{
+						SH.pPWT->chroma_weight_l1[ i ][ j ]   = sev( );
+						SH.pPWT->chroma_offset_l1[ i ][ j ]   = sev( );
+					}
+				}
+			}
+		}
+	}
 }
 
 void H264parser::decRefPicMark( uint8_t nal_ref_idc, uint8_t nal_type )
 {
-	// ...
-};
+	if( 5 == nal_type )
+	{
+		SH.pDRPM->no_output_of_prior_pics_flag   = uv( 1 );
+		SH.pDRPM->long_term_reference_flag       = uv( 1 );
+	}
+
+	else
+	{
+		SH.pDRPM->adaptive_ref_pic_marking_mode_flag   = uv( 1 );
+
+		if( SH.pDRPM->adaptive_ref_pic_marking_mode_flag )
+		{
+			do
+			{
+				SH.pDRPM->memory_management_control_operation   = uev( );
+
+				if( 1 == SH.pDRPM->memory_management_control_operation || 3 == SH.pDRPM->memory_management_control_operation)
+					SH.pDRPM->difference_of_pic_nums_minus1   = uev( );
+
+				if( 2 == SH.pDRPM->memory_management_control_operation)
+					SH.pDRPM->long_term_pic_num  = uev( );
+
+				if( 3 == SH.pDRPM->memory_management_control_operation || 6 == SH.pDRPM->memory_management_control_operation)
+					SH.pDRPM->long_term_frame_idx   = uev( );
+
+				if( 4 == SH.pDRPM->memory_management_control_operation)
+					SH.pDRPM->max_long_term_frame_idx_plus1   = uev( );
+
+			} while( SH.pDRPM->memory_management_control_operation );
+		}
+	}
+}

@@ -50,11 +50,10 @@ class H264parser
 		void setPos( BitPos );
 
 		void parseFrame( uint32_t );
-		void parseFrame( BitPos, uint32_t );
+		void parseFrame( const uint8_t*, uint32_t );
 
 	private:
 
-		bool     flag( void );
 		uint32_t uv  ( int32_t );
 		uint32_t uev ( void );
 		int32_t  sev ( void );

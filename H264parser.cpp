@@ -11,21 +11,30 @@ using std::cout;
 using std::endl;
 using std::string;
 
-H264parser::H264parser( void ): pos( BitPos( ) ) {}
+H264parser::H264parser( void ): pos( BitPos( ) )
+{
+	SH.pRPLM = new ref_pic_list_mod;
+	SH.pPWT  = new pred_weight_table;
+	SH.pDRPM = new dec_ref_pic_mark;
+}
 
-H264parser::H264parser( BitPos in_pos ): pos( in_pos ) { }
+H264parser::H264parser( BitPos in_pos ): pos( in_pos )
+{
+	SH.pRPLM = new ref_pic_list_mod;
+	SH.pPWT  = new pred_weight_table;
+	SH.pDRPM = new dec_ref_pic_mark;
+}
 
 BitPos H264parser::getPos( void )
 { return pos; }
 void H264parser::setPos( BitPos in_pos )
 { pos = in_pos; }
 
-void H264parser::parseFrame( uint32_t length ) { parseFrame( pos, length ); }
-void H264parser::parseFrame( BitPos in_pos, uint32_t length )
+void H264parser::parseFrame( uint32_t length ) { parseFrame( pos.getByte( ), length ); }
+void H264parser::parseFrame( const uint8_t* start, uint32_t length )
 {
-	pos = in_pos;
+	pos.setByte( ( uint8_t* )start );
 
-	const uint8_t* start = pos.getByte( );
 	uint8_t nal_ref_idc;
 	uint8_t nal_type;
 	uint32_t comp_buf;
@@ -57,33 +66,27 @@ void H264parser::parseFrame( BitPos in_pos, uint32_t length )
 
 				// std::cerr << ".";
 				sliceHeader( nal_ref_idc, nal_type );
+				break;
 
-			break;
 			case 0x05:
 
 				// std::cerr << ".";
 				sliceHeader( nal_ref_idc, nal_type );
+				break;
 
-			break;
 			case 0x07:
 
 				// std::cerr << "SPS" << endl;
 				seqPmSet( nal_ref_idc, nal_type );
+				break;
 
-			break;
 			case 0x08:
 
 				// std::cerr << "PPS" << endl;
 				picPmSet( nal_ref_idc, nal_type );
-
-			break;
+				break;
 		}
 	}
-}
-
-bool H264parser::flag( void )
-{
-	return pos.readBits( 1 ) ? true : false;
 }
 
 uint32_t H264parser::uv  ( int numBits )
@@ -168,4 +171,9 @@ bool H264parser::more_rbsp_data( void )
 		return false;
 }
 
-H264parser::~H264parser( void ) { }
+H264parser::~H264parser( void )
+{
+	delete SH.pRPLM;
+	delete SH.pPWT;
+	delete SH.pDRPM;
+}
