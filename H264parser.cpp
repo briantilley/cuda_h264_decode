@@ -11,18 +11,18 @@ using std::cout;
 using std::endl;
 using std::string;
 
-H264parser::H264parser( void ): pos( BitPos( ) )
+H264parser::H264parser( void ): pos( BitPos( ) ), maxSHcount( DEFAULT_SH_COUNT )
 {
-	SH.pRPLM = new ref_pic_list_mod;
-	SH.pPWT  = new pred_weight_table;
-	SH.pDRPM = new dec_ref_pic_mark;
+	SH = ( slice_header** )malloc( maxSHcount * sizeof( slice_header* ) ) ;
+	for( int i = 0; i < maxSHcount; ++i )
+		SH[ i ] = makeSliceHeader( );
 }
 
-H264parser::H264parser( BitPos in_pos ): pos( in_pos )
+H264parser::H264parser( BitPos in_pos ): pos( in_pos ), maxSHcount( DEFAULT_SH_COUNT )
 {
-	SH.pRPLM = new ref_pic_list_mod;
-	SH.pPWT  = new pred_weight_table;
-	SH.pDRPM = new dec_ref_pic_mark;
+	SH = ( slice_header** )malloc( maxSHcount * sizeof( slice_header* ) ) ;
+	for( int i = 0; i < maxSHcount; ++i )
+		SH[ i ] = makeSliceHeader( );
 }
 
 BitPos H264parser::getPos( void )
@@ -30,14 +30,28 @@ BitPos H264parser::getPos( void )
 void H264parser::setPos( BitPos in_pos )
 { pos = in_pos; }
 
+slice_header* H264parser::makeSliceHeader( void )
+{
+	slice_header* retSH = new slice_header;
+
+	retSH->pRPLM = new ref_pic_list_mod;
+	retSH->pPWT  = new pred_weight_table;
+	retSH->pDRPM = new dec_ref_pic_mark;
+
+	return retSH;
+}
+
 void H264parser::parseFrame( uint32_t length ) { parseFrame( pos.getByte( ), length ); }
 void H264parser::parseFrame( const uint8_t* start, uint32_t length )
 {
+	// cout << ( uint16_t )maxSHcount << " " << std::flush;
 	pos.setByte( ( uint8_t* )start );
 
 	uint8_t nal_ref_idc;
 	uint8_t nal_type;
 	uint32_t comp_buf;
+
+	SHidx = 0;
 
 	while( true )
 	{
@@ -62,16 +76,18 @@ void H264parser::parseFrame( const uint8_t* start, uint32_t length )
 
 		switch( nal_type )
 		{
-			case 0x01:
+			case 0x01: case 0x05:
 
-				// std::cerr << ".";
+				if( SHidx >= maxSHcount )
+				{
+					SH = ( slice_header** )realloc( SH, ( SHidx + 1 ) * sizeof( slice_header* ) );
+					SH[ SHidx ] = makeSliceHeader( );
+				}
+
 				sliceHeader( nal_ref_idc, nal_type );
-				break;
+				++SHidx; // SHidx = total count of frame's SH units after parsing
+				maxSHcount = std::max( SHidx, maxSHcount );
 
-			case 0x05:
-
-				// std::cerr << ".";
-				sliceHeader( nal_ref_idc, nal_type );
 				break;
 
 			case 0x07:
@@ -173,7 +189,14 @@ bool H264parser::more_rbsp_data( void )
 
 H264parser::~H264parser( void )
 {
-	delete SH.pRPLM;
-	delete SH.pPWT;
-	delete SH.pDRPM;
+	for( int i = 0; i < maxSHcount; ++i )
+	{
+		delete SH[ i ]->pRPLM;
+		delete SH[ i ]->pPWT;
+		delete SH[ i ]->pDRPM;
+
+		delete SH[ i ];
+	}
+
+	free( SH );
 }

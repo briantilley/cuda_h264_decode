@@ -54,6 +54,8 @@ class H264parser
 
 	private:
 
+		slice_header* makeSliceHeader( void );
+
 		uint32_t uv  ( int32_t );
 		uint32_t uev ( void );
 		int32_t  sev ( void );
@@ -69,10 +71,12 @@ class H264parser
 
 		BitPos pos;
 		
-		seq_param_set SPS;
-		pic_param_set PPS;
-		slice_header  SH;
+		seq_param_set  SPS;
+		pic_param_set  PPS;
+		slice_header** SH;
 
+		uint8_t SHidx;
+		uint8_t maxSHcount;
 };
 
 #include <linux/videodev2.h>

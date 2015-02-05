@@ -25,7 +25,7 @@ int main( int argc, char** argv )
 	V4L2stream stream = V4L2stream( 1920, 1080, "/dev/video0", 8);
 	stream.init( );
 	stream.on( );
-	for( int i = 0; i < 301; ++i)
+	for( int i = 0; i < 1200; ++i)
 		stream.getFrame( &frame_handler );
 	stream.off( );
 

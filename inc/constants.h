@@ -8,4 +8,6 @@
 #define DEFAULT_DEVICE "/dev/video0"
 #define DEFAULT_NUMBUFS 8
 
+#define DEFAULT_SH_COUNT 4
+
 #endif
