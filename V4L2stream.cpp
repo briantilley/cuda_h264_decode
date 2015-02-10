@@ -152,7 +152,7 @@ void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 		return;
 	}
 
-	if ( -1 == ps_callback( buf_array[ buffer.index ].start, buffer.length ) )
+	if ( -1 == ps_callback( buf_array[ buffer.index ].start, buffer.bytesused ) )
 		cout << "frame processing callback failed" << endl;
 
 	if( -1 == xioctl( fd, VIDIOC_QBUF, &buffer ) )

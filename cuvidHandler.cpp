@@ -44,30 +44,34 @@ void H264parser::fillParams( )
     // cuvidPicParams->CodecSpecific.h264.CurrFieldOrderCnt[ 0 ] ;
     // cuvidPicParams->CodecSpecific.h264.CurrFieldOrderCnt[ 1 ] ;
 
-    cuvidPicParams->CodecSpecific.h264.fmo_aso_enable = 0;
+    cuvidPicParams->CodecSpecific.h264.fmo_aso_enable = 0; //--------------------------------
     cuvidPicParams->CodecSpecific.h264.num_slice_groups_minus1 = PPS.num_slice_groups_minus1;
     cuvidPicParams->CodecSpecific.h264.slice_group_map_type = PPS.slice_group_map_type;
     cuvidPicParams->CodecSpecific.h264.pic_init_qs_minus26 = PPS.pic_init_qs_minus26;
     cuvidPicParams->CodecSpecific.h264.slice_group_change_rate_minus1 = PPS.slice_group_change_rate_minus1;
     // cuvidPicParams->CodecSpecific.h264.fmo.slice_group_map_addr ;
 
-    cuvidPicParams->PicWidthInMbs = SPS.pic_width_in_mbs_minus1;
-    // cuvidPicParams->FrameHeightInMbs ;
-    // cuvidPicParams->CurrPicIdx ;
+    cuvidPicParams->PicWidthInMbs = SPS.pic_width_in_mbs_minus1 + 1;
+    cuvidPicParams->FrameHeightInMbs = ( 2 - SPS.frame_mbs_only_flag ) * ( SPS.pic_height_in_map_units_minus1 + 1 );
+    cuvidPicParams->CurrPicIdx = ( cuvidPicParams->intra_pic_flag ) ? 0 : cuvidPicParams->CurrPicIdx;
     cuvidPicParams->field_pic_flag = SH[ 0 ]->field_pic_flag;
-    // cuvidPicParams->bottom_field_flag ;
+    cuvidPicParams->bottom_field_flag = SH[ 0 ]->bottom_field_flag;
     // cuvidPicParams->second_field ;
 
-	// cuvidPicParams->nBitstreamDataLen ;
-	// cuvidPicParams->pBitstreamData ;
-	// cuvidPicParams->nNumSlices ;
-	// cuvidPicParams->pSliceDataOffsets ;
+	cuvidPicParams->nBitstreamDataLen = length;
+	cuvidPicParams->pBitstreamData = start;
+	cuvidPicParams->nNumSlices = SHidx;
+	cuvidPicParams->pSliceDataOffsets = SDOs;
 
-	// cuvidPicParams->ref_pic_flag ;
-	// cuvidPicParams->intra_pic_flag ;
+	cuvidPicParams->ref_pic_flag = ( nal_ref_idc ) ? 1 : 0;
+	cuvidPicParams->intra_pic_flag = idr_pic_flag;
+
+    updateDPB( );
+
+    ++cuvidPicParams->CurrPicIdx;
 }
 
 void H264parser::updateDPB( void )
 {
-
+    CUVIDH264DPBENTRY* dpb = cuvidPicParams->CodecSpecific.h264.dpb;
 }

@@ -44,7 +44,17 @@ void H264parser::seqPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 			SPS.seq_scaling_list_present_flag = ( bool* )realloc( SPS.seq_scaling_list_present_flag, for_value * sizeof( bool ) );
 
 			for( int i = 0; i < for_value; ++i )
+			{
 				SPS.seq_scaling_list_present_flag[ i ] = uv( 1 );
+
+				if( SPS.seq_scaling_list_present_flag[ i ] )
+				{
+					if( i < 6 )
+						scaling_list( cuvidPicParams->CodecSpecific.h264.WeightScale4x4[ i ], 16, &defaultMatrix4x4[ i ] );
+					else
+						scaling_list( cuvidPicParams->CodecSpecific.h264.WeightScale8x8[ i - 6], 64, &defaultMatrix8x8[ i - 6 ] );
+				}
+			}
 		}
 	}
 
@@ -195,7 +205,7 @@ void H264parser::sliceHeader( uint8_t nal_ref_idc, uint8_t nal_type )
 
 	SH[ SHidx ]->frame_num                                 = uv( SPS.log2_max_frame_num_minus4 + 4 );
 
-	if( SPS.frame_mbs_only_flag )
+	if( !SPS.frame_mbs_only_flag )
 	{
 		SH[ SHidx ]->field_pic_flag                        = uv( 1 );
 
@@ -241,9 +251,14 @@ void H264parser::sliceHeader( uint8_t nal_ref_idc, uint8_t nal_type )
 		}
 	}
 
-	refPicListMod( nal_ref_idc, nal_type );
-	predWeightTable( nal_ref_idc, nal_type );
-	decRefPicMark( nal_ref_idc, nal_type );
+	if( 20 != nal_type && 21 != nal_type )
+		refPicListMod( nal_ref_idc, nal_type );
+
+	if( ( PPS.weighted_pred_flag && ( 0 == SH[ SHidx ]->slice_type % 5 || 3 == SH[ SHidx ]->slice_type % 5 ) ) || ( 1 == PPS.weighted_bipred_idc && 1 == SH[ SHidx ]->slice_type % 5 ) )
+		predWeightTable( nal_ref_idc, nal_type );
+
+	if( nal_ref_idc )
+		decRefPicMark( nal_ref_idc, nal_type );
 
 	if( PPS.entropy_coding_mode_flag && 2 != SH[ SHidx ]->slice_type % 5 && 4 != SH[ SHidx ]->slice_type % 5)
 		SH[ SHidx ]->cabac_init_idc                        = uev( );
@@ -277,6 +292,8 @@ void H264parser::sliceHeader( uint8_t nal_ref_idc, uint8_t nal_type )
 
 		SH[ SHidx ]->slice_group_change_cycle              = uv( tempVal );
 	}
+
+	SDOs[ SHidx ] = pos.getByte( ) - start;
 }
 
 void H264parser::refPicListMod( uint8_t nal_ref_idc, uint8_t nal_type )

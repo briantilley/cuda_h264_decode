@@ -77,12 +77,18 @@ class H264parser
 		void updateDPB( void );
 
 		BitPos pos;
+
+		const uint8_t* start;
+		uint32_t length;
 		
 		uint8_t nal_ref_idc;
+		bool    idr_pic_flag;
 
 		seq_param_set  SPS;
 		pic_param_set  PPS;
 		slice_header** SH;
+
+		uint32_t* SDOs;
 
 		uint8_t SHidx;
 		uint8_t maxSHcount;
