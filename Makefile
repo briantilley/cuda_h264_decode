@@ -5,7 +5,7 @@ STD=g++
 #filenames
 MAIN=main.cu
 OUTPUT=out
-OBJECTS=BitPos.o H264parser.o V4L2stream.o NALparser.o
+OBJECTS=BitPos.o H264parser.o V4L2stream.o NALparser.o cuvidHandler.o
 
 #headers
 INC=-I/usr/local/cuda-6.5/include
@@ -25,7 +25,7 @@ all: classes main
 main: $(MAIN)
 	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(LIBS) $(CUFLAGS)
 
-classes: bitpos parser v4l2 nalparser
+classes: bitpos parser v4l2 nalparser cuvid
 	@# will automatically make targets
 
 bitpos: BitPos.cpp
@@ -39,6 +39,9 @@ nalparser: NALparser.cpp
 
 v4l2: V4L2stream.cpp
 	$(STD) V4L2stream.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
+
+cuvid: cuvidHandler.cpp
+	$(STD) cuvidHandler.cpp -c $(INC) $(LIB_PATHS) $(LIBS) $(FLAGS)
 
 run: $(OUTPUT)
 	@./$(OUTPUT)

@@ -167,7 +167,17 @@ void H264parser::picPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 			PPS.pic_scaling_list_present_flag = ( bool* )realloc( PPS.pic_scaling_list_present_flag, tempVal * sizeof( bool ) );
 
 			for( int i = 0; i < tempVal; ++i )
+			{
 				PPS.pic_scaling_list_present_flag[ i ]   = uv( 1 );
+
+				if( PPS.pic_scaling_list_present_flag[ i ] )
+				{
+					if( i < 6 )
+						scaling_list( cuvidPicParams->CodecSpecific.h264.WeightScale4x4[ i ], 16, &defaultMatrix4x4[ i ] );
+					else
+						scaling_list( cuvidPicParams->CodecSpecific.h264.WeightScale8x8[ i - 6], 64, &defaultMatrix8x8[ i - 6 ] );
+				}
+			}
 		}
 
 		PPS.second_chroma_qp_index_offset        = sev( );
@@ -426,5 +436,26 @@ void H264parser::decRefPicMark( uint8_t nal_ref_idc, uint8_t nal_type )
 
 			} while( SH[ SHidx ]->pDRPM->memory_management_control_operation );
 		}
+	}
+}
+
+void H264parser::scaling_list( uint8_t* scalingList, uint8_t listSize, bool* defaultMatrix)
+{
+	uint8_t lastScale   = 8;
+	uint8_t nextScale   = 8;
+	int32_t delta_scale = 0;
+
+	for( int i = 0; i < listSize; ++i )
+	{
+		if( nextScale )
+		{
+			delta_scale    = sev( );
+			nextScale      = ( lastScale + delta_scale ) % 256;
+
+			*defaultMatrix = ( !i && !nextScale );
+		}
+
+		scalingList[ i ]   = ( !nextScale ) ? lastScale : nextScale;
+		lastScale          = scalingList[ i ];
 	}
 }

@@ -69,14 +69,25 @@ class H264parser
 		void predWeightTable( uint8_t, uint8_t );
 		void decRefPicMark( uint8_t, uint8_t );
 
+		bool defaultMatrix4x4[ 6 ];
+		bool defaultMatrix8x8[ 2 ];
+		void scaling_list( uint8_t*, uint8_t, bool* );
+
+		void fillParams( void );
+		void updateDPB( void );
+
 		BitPos pos;
 		
+		uint8_t nal_ref_idc;
+
 		seq_param_set  SPS;
 		pic_param_set  PPS;
 		slice_header** SH;
 
 		uint8_t SHidx;
 		uint8_t maxSHcount;
+
+		CUVIDPICPARAMS* cuvidPicParams;
 };
 
 #include <linux/videodev2.h>
