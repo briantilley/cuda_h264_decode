@@ -21,6 +21,8 @@ H264parser::H264parser( void ): pos( BitPos( ) ), maxSHcount( DEFAULT_SH_COUNT )
 	cuvidPicParams->CurrPicIdx = 0;
 
 	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
+
+	dpbIdx = 0;
 }
 
 H264parser::H264parser( BitPos in_pos ): pos( in_pos ), maxSHcount( DEFAULT_SH_COUNT )
@@ -33,6 +35,8 @@ H264parser::H264parser( BitPos in_pos ): pos( in_pos ), maxSHcount( DEFAULT_SH_C
 	cuvidPicParams->CurrPicIdx = 0;
 
 	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
+
+	dpbIdx = 0;
 }
 
 BitPos H264parser::getPos( void )

@@ -93,6 +93,8 @@ class H264parser
 		uint8_t SHidx;
 		uint8_t maxSHcount;
 
+		uint32_t dpbIdx;
+
 		CUVIDPICPARAMS* cuvidPicParams;
 };
 
