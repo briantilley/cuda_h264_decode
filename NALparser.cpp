@@ -12,6 +12,9 @@ using std::cout;
 using std::endl;
 using std::string;
 
+// the functions below are outlined in the H264 specification
+// they are nearly carbon-copied here to gather data before further use
+
 void H264parser::seqPmSet( uint8_t nal_ref_idc, uint8_t nal_type )
 {
 	SPS.profile_idc                              = uv( 8 );
@@ -477,6 +480,8 @@ void H264parser::scaling_list( uint8_t* scalingList, uint8_t listSize, bool* def
 	}
 }
 
+// check if there is more data in the RBSP
+// not sure how exact or robust this method is
 bool H264parser::more_rbsp_data( void )
 {
 	BitPos pos_copy = BitPos( pos );

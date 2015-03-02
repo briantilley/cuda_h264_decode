@@ -12,6 +12,8 @@ using std::cout;
 using std::endl;
 using std::string;
 
+// straightforward population of the pic params struct for cuda decoder
+// some values are hardcoded magic numbers, not a major issue here
 void H264parser::fillParams( )
 {
 	cuvidPicParams->CodecSpecific.h264.log2_max_frame_num_minus4 = SPS.log2_max_frame_num_minus4;
@@ -64,9 +66,11 @@ void H264parser::fillParams( )
 	cuvidPicParams->ref_pic_flag = ( nal_ref_idc ) ? 1 : 0;
 	cuvidPicParams->intra_pic_flag = idr_pic_flag;
 
-    updateDPB( );
+    updateDPB( ); // manage the decoded picture buffer
 
     // CUVIDPROCPARAMS
+    // in all likelihood, this is entirely unnecessary
+    // will probably be removed
     ++pPidx; pPidx %= 6;
     memset( procParams[ pPidx ], 0, sizeof( CUVIDPROCPARAMS ) );
 
@@ -76,6 +80,8 @@ void H264parser::fillParams( )
     // procParams[ pPidx ]->unpaired_field = !procParams[ pPidx ]->progressive_frame;
 }
 
+// functions for managing the decoded picture buffer
+// behavior is specified by the H264 standard
 void H264parser::updateDPB( void )
 {
     CUVIDH264DPBENTRY* dpb = cuvidPicParams->CodecSpecific.h264.dpb;

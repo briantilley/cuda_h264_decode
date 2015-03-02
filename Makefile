@@ -11,7 +11,7 @@ OBJECTS=BitPos.o H264parser.o V4L2stream.o NALparser.o cuvidHandler.o cuda.o
 INC=-I/usr/local/cuda-6.5/include
 
 #libraries
-CUDA_LIBS=-lnvcuvid -lcuda
+CUDA_LIBS=-lnvcuvid -lcudart
 LIB_PATHS=-L/usr/lib/nvidia-340
 
 #flags
@@ -21,10 +21,13 @@ CUFLAGS=-std=c++11
 #targets
 all: classes main
 	@# runs classes and main targets in sequence
+	@# default behavior is to compile the entire program
 
+# compile only main.cpp, then link preexisting object files from other sources
 main: $(MAIN)
 	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
 
+# generate object files from all source files sans main.cpp
 classes: bitpos parser v4l2 nalparser cuvid cuda
 	@# will automatically make targets
 
@@ -46,8 +49,10 @@ cuvid: cuvidHandler.cpp
 cuda: cuda.cu
 	$(CUDA) cuda.cu -c $(INC) $(CUFLAGS) $(LIB_PATHS) $(CUDA_LIBS)
 
+# run target is for convenience, executes the program
 run: $(OUTPUT)
 	./$(OUTPUT)
 
+# remove the executable and all object files (useful for svc, e.g. git commits)
 clean:
 	rm $(OUTPUT) $(OBJECTS)

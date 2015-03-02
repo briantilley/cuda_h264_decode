@@ -12,12 +12,15 @@ using std::cout;
 using std::endl;
 using std::string;
 
+// create global variables
 H264parser parser           = H264parser( );
 CUdevice dev;
 CUcontext* pCtx             = new CUcontext;
 CUvideodecoder* pDecoder    = new CUvideodecoder;
 CUVIDDECODECREATEINFO *pdci = new CUVIDDECODECREATEINFO;
 
+// this function is run on data from one frame of video
+// essentially, this is the processing callback
 int frame_handler( uint8_t* start, uint32_t length )
 {
 	std::cerr << "." << std::flush;
@@ -35,15 +38,16 @@ int frame_handler( uint8_t* start, uint32_t length )
 
 int main( int argc, char** argv )
 {
+	// create a V4L2 stream object
 	V4L2stream stream = V4L2stream( );
 	stream.init( );
 
-	// create ctx to appease cuda
+	// CUDA code below is ugly and needs to be abstracted
+	// create context to appease cuda runtime
 	cudaSetDevice( 0 );
 	cudaGetDevice( &dev );
-	cuCtxCreate( pCtx, 0, dev );
 
-	// fill pdci
+	// fill video decoder creation struct
 	pdci->ulWidth             = CODED_WIDTH;
 	pdci->ulHeight            = CODED_HEIGHT;
 	pdci->ulNumDecodeSurfaces = 15;
@@ -68,7 +72,7 @@ int main( int argc, char** argv )
 	cuvidCreateDecoder( pDecoder, pdci );
 
 	stream.on( );
-	for( int i = 0; i < 1200; ++i)
+	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
 		stream.getFrame( &frame_handler );
 	stream.off( );
 

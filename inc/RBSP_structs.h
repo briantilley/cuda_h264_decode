@@ -1,3 +1,4 @@
+// containers for values outlined in H264 spec
 #ifndef RBSP_STRUCTS_H
 #define RBSP_STRUCTS_H
 

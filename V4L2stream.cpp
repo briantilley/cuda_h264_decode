@@ -1,3 +1,7 @@
+// this class is here to handle image data from V4L2
+// the particular webcam in use (Logitech C920)
+// supplies hardware-encoded H264 natively
+
 #include <string>
 #include <string.h>
 #include <iostream>
@@ -12,15 +16,18 @@ using std::cout;
 using std::endl;
 using std::string;
 
+// simple member initialization
 V4L2stream::V4L2stream( void ): width( TARGET_WIDTH ), height( TARGET_HEIGHT ), device( DEFAULT_DEVICE ), numBufs( DEFAULT_NUMBUFS ) { }
 V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
 
+// turn off the stream and close the device file as cleanup
 V4L2stream::~V4L2stream( void )
 {
 	off( );
 	close( fd );
 }
 
+// set/get functions to encapsulate data members
 void V4L2stream::setWidth( int32_t in_width )
 { width = in_width; }
 int32_t V4L2stream::getWidth( void )
@@ -41,6 +48,8 @@ void V4L2stream::setBufs( int32_t in_numBufs )
 int32_t V4L2stream::getBufs( void )
 { return numBufs; }
 
+// initialize the stream object, all V4L2 specific code
+// some hardcoded magic values here
 void V4L2stream::init( void )
 {
 	fd = open( device.c_str( ), O_RDWR );
@@ -123,6 +132,7 @@ void V4L2stream::init( void )
 	}
 }
 
+// turn the stream on
 void V4L2stream::on( void )
 {
 	if( -1 == xioctl( fd, VIDIOC_STREAMON, &buffer.type ) )
@@ -134,6 +144,7 @@ void V4L2stream::on( void )
 	buffer.index = 0;
 }
 
+// turn the stream off
 void V4L2stream::off( void )
 {
 	if( -1 == xioctl( fd, VIDIOC_STREAMOFF, &buffer.type ) )
@@ -143,6 +154,8 @@ void V4L2stream::off( void )
 	}
 }
 
+// retrieve one frame from V4L2, run the processing callback on the data,
+// and give the frame buffer back to V4L2
 void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
 	
@@ -165,6 +178,7 @@ void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 
 }
 
+// ioctl wrapper function
 int32_t V4L2stream::xioctl( int32_t file_desc, int32_t request, void* argp )
 {
 	int32_t retVal;

@@ -1,3 +1,7 @@
+// this entire file was made to test cuda surface mapping
+// final code should be properly written, this file may
+// need to go
+
 #include <iostream>
 #include <cuviddec.h>
 
@@ -15,13 +19,9 @@ CUdeviceptr            devPtr;
 void mapSurface( int PicIdx, CUVIDPROCPARAMS* pVPP)
 {
 	unsigned int pitch;
-std::cout << PicIdx << std::endl;
-	// memset( pVPP, 0, sizeof( CUVIDPROCPARAMS ) );
-	// pVPP->progressive_frame = 1;
-	// pVPP->second_field = 0;
-	// pVPP->top_field_first = 0;
-	// pVPP->unpaired_field = 1;
 
+	// made schoolboy error, segfault casued by passing pDecoder
+	// fixed below to *pDecoder
 	cuvidMapVideoFrame( *pDecoder, PicIdx, &devPtr, &pitch, pVPP );
 	cuvidUnmapVideoFrame( *pDecoder, devPtr );
 }
