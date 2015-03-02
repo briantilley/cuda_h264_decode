@@ -52,7 +52,15 @@ class H264parser
 		void parseFrame( uint32_t );
 		void parseFrame( const uint8_t*, uint32_t );
 
+		CUVIDPROCPARAMS* getProcParams( void );
+
+		int32_t idx( void );
+
+		CUVIDPICPARAMS*  cuvidPicParams;
+
 	private:
+
+		inline void init( void );
 
 		slice_header* makeSliceHeader( void );
 
@@ -75,6 +83,7 @@ class H264parser
 
 		void fillParams( void );
 		void updateDPB( void );
+		void clearDPB( void );
 
 		BitPos pos;
 
@@ -88,14 +97,15 @@ class H264parser
 		pic_param_set  PPS;
 		slice_header** SH;
 
+		int32_t PrevFrameNum;
+
 		uint32_t* SDOs;
 
 		uint8_t SHidx;
 		uint8_t maxSHcount;
 
-		uint32_t dpbIdx;
-
-		CUVIDPICPARAMS* cuvidPicParams;
+		int32_t pPidx;
+		CUVIDPROCPARAMS* procParams[ 6 ];
 };
 
 #include <linux/videodev2.h>
@@ -150,5 +160,9 @@ class V4L2stream
 		struct v4l2_ext_controls   ext_ctrls;
 
 };
+
+// from cuda.cu
+
+void mapSurface( int, CUVIDPROCPARAMS* );
 
 #endif

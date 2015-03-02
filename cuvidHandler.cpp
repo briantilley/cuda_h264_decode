@@ -41,8 +41,6 @@ void H264parser::fillParams( )
     cuvidPicParams->CodecSpecific.h264.second_chroma_qp_index_offset = PPS.second_chroma_qp_index_offset;
     cuvidPicParams->CodecSpecific.h264.ref_pic_flag = ( nal_ref_idc ) ? 1 : 0;
     cuvidPicParams->CodecSpecific.h264.frame_num = SH[ 0 ]->frame_num;
-    // cuvidPicParams->CodecSpecific.h264.CurrFieldOrderCnt[ 0 ] ;
-    // cuvidPicParams->CodecSpecific.h264.CurrFieldOrderCnt[ 1 ] ;
 
     cuvidPicParams->CodecSpecific.h264.fmo_aso_enable = 0; //--------------------------------
     cuvidPicParams->CodecSpecific.h264.num_slice_groups_minus1 = PPS.num_slice_groups_minus1;
@@ -56,7 +54,7 @@ void H264parser::fillParams( )
     cuvidPicParams->CurrPicIdx = ( cuvidPicParams->intra_pic_flag ) ? 0 : cuvidPicParams->CurrPicIdx;
     cuvidPicParams->field_pic_flag = SH[ 0 ]->field_pic_flag;
     cuvidPicParams->bottom_field_flag = SH[ 0 ]->bottom_field_flag;
-    // cuvidPicParams->second_field ;
+    // second_field handled in H264parser::parseFrame switch statement
 
 	cuvidPicParams->nBitstreamDataLen = length;
 	cuvidPicParams->pBitstreamData = start;
@@ -68,10 +66,56 @@ void H264parser::fillParams( )
 
     updateDPB( );
 
-    ++cuvidPicParams->CurrPicIdx;
+    // CUVIDPROCPARAMS
+    ++pPidx; pPidx %= 6;
+    memset( procParams[ pPidx ], 0, sizeof( CUVIDPROCPARAMS ) );
+
+    // procParams[ pPidx ]->progressive_frame = !cuvidPicParams->field_pic_flag;
+    // procParams[ pPidx ]->second_field = cuvidPicParams->second_field;
+    // procParams[ pPidx ]->top_field_first = !cuvidPicParams->second_field == !cuvidPicParams->bottom_field_flag;
+    // procParams[ pPidx ]->unpaired_field = !procParams[ pPidx ]->progressive_frame;
 }
 
 void H264parser::updateDPB( void )
 {
     CUVIDH264DPBENTRY* dpb = cuvidPicParams->CodecSpecific.h264.dpb;
+
+    if( cuvidPicParams->intra_pic_flag )
+    {
+        clearDPB( );
+        dpb[ 0 ].PicIdx = cuvidPicParams->CurrPicIdx;
+        dpb[ 0 ].FrameIdx = ( SH[ 0 ]->pDRPM->long_term_reference_flag ) ? SH[ 0 ]->pDRPM->long_term_frame_idx : SH[ 0 ]->frame_num;
+        dpb[ 0 ].is_long_term = SH[ 0 ]->pDRPM->long_term_reference_flag;
+        dpb[ 0 ].not_existing = 0;
+        dpb[ 0 ].used_for_reference = 1;
+    }
+
+    for ( int i = 0; i < DPB_SIZE; ++i )
+    {
+        if( 1 == dpb[ i ].not_existing && 0 == dpb[ i ].used_for_reference )
+        {
+            if( cuvidPicParams->second_field ) return; // would be redundant to store second field
+
+            if( cuvidPicParams->ref_pic_flag ) // only store ref pics
+            {
+                dpb[ i ].PicIdx = cuvidPicParams->CurrPicIdx;
+                dpb[ i ].FrameIdx = ( SH[ 0 ]->pDRPM->long_term_reference_flag ) ? SH[ 0 ]->pDRPM->long_term_frame_idx : SH[ 0 ]->frame_num;
+                dpb[ i ].is_long_term = SH[ 0 ]->pDRPM->long_term_reference_flag;
+                dpb[ i ].not_existing = 0;
+                dpb[ i ].used_for_reference = 1;
+            }
+
+            return; // store one and done
+        }
+    }
+}
+
+void H264parser::clearDPB( void )
+{
+    for( int i = 0; i < DPB_SIZE; ++i )
+    {
+        cuvidPicParams->CodecSpecific.h264.dpb[ i ].PicIdx = -1;
+        cuvidPicParams->CodecSpecific.h264.dpb[ i ].not_existing = 1;
+        cuvidPicParams->CodecSpecific.h264.dpb[ i ].used_for_reference = 0;
+    }
 }

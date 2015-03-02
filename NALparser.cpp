@@ -476,3 +476,34 @@ void H264parser::scaling_list( uint8_t* scalingList, uint8_t listSize, bool* def
 		lastScale          = scalingList[ i ];
 	}
 }
+
+bool H264parser::more_rbsp_data( void )
+{
+	BitPos pos_copy = BitPos( pos );
+	uint32_t comp_buf = 0;
+	uint8_t diff      = 0;
+
+	while( NAL_UNIT_START != comp_buf )
+	{
+		comp_buf <<= 8;
+		comp_buf  += pos.readByte( );
+	}
+
+	pos.setByte( pos.getByte( ) - 4 );
+	pos.setMask( 0x01 );
+
+	while( 2 != comp_buf )
+	{
+		comp_buf >>= 1;
+		comp_buf  |= pos.readBitReverse( ) << 1;
+		comp_buf  &= 0x03;
+	}
+
+	diff = pos.getByte( ) - pos_copy.getByte( );
+	pos = BitPos( pos_copy );
+
+	if( diff >= 2 )
+		return true;
+	else
+		return false;
+}

@@ -12,31 +12,30 @@ using std::endl;
 using std::string;
 
 H264parser::H264parser( void ): pos( BitPos( ) ), maxSHcount( DEFAULT_SH_COUNT )
-{
-	SH = ( slice_header** )malloc( maxSHcount * sizeof( slice_header* ) ) ;
-	for( int i = 0; i < maxSHcount; ++i )
-		SH[ i ] = makeSliceHeader( );
-
-	cuvidPicParams = ( CUVIDPICPARAMS* )malloc( sizeof( CUVIDPICPARAMS ) );
-	cuvidPicParams->CurrPicIdx = 0;
-
-	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
-
-	dpbIdx = 0;
-}
+{ init( ); }
 
 H264parser::H264parser( BitPos in_pos ): pos( in_pos ), maxSHcount( DEFAULT_SH_COUNT )
+{ init( ); }
+
+inline void H264parser::init( void )
 {
 	SH = ( slice_header** )malloc( maxSHcount * sizeof( slice_header* ) ) ;
 	for( int i = 0; i < maxSHcount; ++i )
 		SH[ i ] = makeSliceHeader( );
 
+	PrevFrameNum = -1;
+
 	cuvidPicParams = ( CUVIDPICPARAMS* )malloc( sizeof( CUVIDPICPARAMS ) );
-	cuvidPicParams->CurrPicIdx = 0;
+	cuvidPicParams->CurrPicIdx = -1;
 
 	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
 
-	dpbIdx = 0;
+	pPidx = -1;
+	for( int i = 0; i < 6; ++i )
+		procParams[ i ] = new CUVIDPROCPARAMS;
+
+	// initialize DPB as empty
+	clearDPB( );
 }
 
 BitPos H264parser::getPos( void )
@@ -70,6 +69,8 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 	SHidx = 0;
 	idr_pic_flag = true;
 
+    ++cuvidPicParams->CurrPicIdx;
+
 	while( true )
 	{
 		pos.setMask( 0x80 );
@@ -82,7 +83,11 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 			comp_buf <<= 8;
 			comp_buf  += pos.readByte( );
 
-			if( pos.getByte( ) >= ( start + length ) ) return; // end of frame
+			if( pos.getByte( ) >= ( start + length ) )
+			{
+				fillParams( );
+				return; // end of frame
+			}
 		}
 
 		uv( 1 ); // forbidden zero bit
@@ -100,9 +105,18 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 				{
 					SH = ( slice_header** )realloc( SH, ( SHidx + 1 ) * sizeof( slice_header* ) );
 					SH[ SHidx ] = makeSliceHeader( );
+
+					SDOs = ( uint32_t* )realloc( SDOs, maxSHcount * sizeof( uint32_t ) );
 				}
 
 				sliceHeader( nal_ref_idc, nal_type );
+
+				if( !SHidx )
+				{
+					cuvidPicParams->second_field = ( PrevFrameNum == SH[ 0 ]->frame_num && SH[ 0 ]->field_pic_flag ) ? 1 : 0;
+					PrevFrameNum = SH[ 0 ]->frame_num;
+				}
+
 				++SHidx; // SHidx = total count of frame's SH units after parsing
 				maxSHcount = std::max( SHidx, maxSHcount );
 
@@ -120,8 +134,18 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 				picPmSet( nal_ref_idc, nal_type );
 				break;
 		}
-		std::cerr << ( int )SHidx << " " << std::flush;
 	}
+}
+
+CUVIDPROCPARAMS* H264parser::getProcParams( void )
+{
+	if( 4 >= idx( ) && -1 < pPidx)
+		return procParams[ ( pPidx + 2 ) % 6 ];
+}
+
+int32_t H264parser::idx( void )
+{
+	return cuvidPicParams->CurrPicIdx;
 }
 
 uint32_t H264parser::uv  ( int numBits )
@@ -175,37 +199,6 @@ int32_t  H264parser::sev ( void ) // not working
 	return value;
 }
 
-bool H264parser::more_rbsp_data( void )
-{
-	BitPos pos_copy = BitPos( pos );
-	uint32_t comp_buf = 0;
-	uint8_t diff      = 0;
-
-	while( NAL_UNIT_START != comp_buf )
-	{
-		comp_buf <<= 8;
-		comp_buf  += pos.readByte( );
-	}
-
-	pos.setByte( pos.getByte( ) - 4 );
-	pos.setMask( 0x01 );
-
-	while( 2 != comp_buf )
-	{
-		comp_buf >>= 1;
-		comp_buf  |= pos.readBitReverse( ) << 1;
-		comp_buf  &= 0x03;
-	}
-
-	diff = pos.getByte( ) - pos_copy.getByte( );
-	pos = BitPos( pos_copy );
-
-	if( diff >= 2 )
-		return true;
-	else
-		return false;
-}
-
 H264parser::~H264parser( void )
 {
 	for( int i = 0; i < maxSHcount; ++i )
@@ -216,6 +209,9 @@ H264parser::~H264parser( void )
 
 		delete SH[ i ];
 	}
+
+	for( int i = 0; i < 6; ++i )
+		delete procParams[ i ];
 
 	free( SH );
 

@@ -12,7 +12,7 @@ using std::cout;
 using std::endl;
 using std::string;
 
-V4L2stream::V4L2stream( void ): width( DEFAULT_WIDTH ), height( DEFAULT_HEIGHT ), device( DEFAULT_DEVICE ), numBufs( DEFAULT_NUMBUFS ) { }
+V4L2stream::V4L2stream( void ): width( TARGET_WIDTH ), height( TARGET_HEIGHT ), device( DEFAULT_DEVICE ), numBufs( DEFAULT_NUMBUFS ) { }
 V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
 
 V4L2stream::~V4L2stream( void )
