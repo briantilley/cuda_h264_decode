@@ -29,8 +29,6 @@ int frame_handler( uint8_t* start, uint32_t length )
 	
 	cuvidDecodePicture( *pDecoder, parser.cuvidPicParams );
 
-	mapSurface( parser.idx( ) ); // test mapping decode surface from cuvid
-
 	return 0;
 }
 
