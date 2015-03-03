@@ -28,10 +28,8 @@ int frame_handler( uint8_t* start, uint32_t length )
 	parser.parseFrame( start, length );
 	
 	cuvidDecodePicture( *pDecoder, parser.cuvidPicParams );
-	
-	int mapIdx = parser.idx( ) - 4;
-	if( mapIdx >= 0 )
-		mapSurface( mapIdx, parser.getProcParams( ) );
+
+	mapSurface( parser.idx( ) ); // test mapping decode surface from cuvid
 
 	return 0;
 }
@@ -75,6 +73,8 @@ int main( int argc, char** argv )
 	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
 		stream.getFrame( &frame_handler );
 	stream.off( );
+
+	cout << endl;
 
 	return 0;
 }

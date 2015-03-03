@@ -54,8 +54,6 @@ class H264parser
 		void parseFrame( uint32_t );
 		void parseFrame( const uint8_t*, uint32_t );
 
-		CUVIDPROCPARAMS* getProcParams( void );
-
 		int32_t idx( void );
 
 		CUVIDPICPARAMS*  cuvidPicParams;
@@ -105,9 +103,6 @@ class H264parser
 
 		uint8_t SHidx;
 		uint8_t maxSHcount;
-
-		int32_t pPidx;
-		CUVIDPROCPARAMS* procParams[ 6 ];
 };
 
 #include <linux/videodev2.h>
@@ -165,6 +160,6 @@ class V4L2stream
 
 // from cuda.cu
 
-void mapSurface( int, CUVIDPROCPARAMS* );
+void mapSurface( int );
 
 #endif

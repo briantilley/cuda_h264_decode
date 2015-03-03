@@ -15,8 +15,9 @@ extern CUcontext*      pCtx;
 extern CUvideodecoder* pDecoder;
 
 CUdeviceptr            devPtr;
+CUVIDPROCPARAMS*       pVPP;
 
-void mapSurface( int PicIdx, CUVIDPROCPARAMS* pVPP)
+void mapSurface( int PicIdx )
 {
 	unsigned int pitch;
 

@@ -36,11 +36,6 @@ inline void H264parser::init( void )
 	// slice data offsets, one for each slice header
 	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
 
-	// proc params are used in a rolling array, probably unnecessary
-	pPidx = -1;
-	for( int i = 0; i < 6; ++i )
-		procParams[ i ] = new CUVIDPROCPARAMS;
-
 	// initialize decoded picture buffer as empty
 	clearDPB( );
 }
@@ -81,7 +76,7 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 	idr_pic_flag = true; // pic is assumed intra-coded until non-IDR slice found
 
     ++cuvidPicParams->CurrPicIdx; // increment the index before parsing (-1 initially)
-
+    
     // continuously loop to find all NAL units
     // nested while loop for seeking returns at end of frame
 	while( true )
@@ -155,14 +150,6 @@ void H264parser::parseFrame( const uint8_t* in_start, uint32_t in_length )
 	}
 }
 
-// badly written with magic numbers
-// not essential, will probably be removed
-CUVIDPROCPARAMS* H264parser::getProcParams( void )
-{
-	if( 4 >= idx( ) && -1 < pPidx)
-		return procParams[ ( pPidx + 2 ) % 6 ];
-}
-
 // get the current PicIdx
 int32_t H264parser::idx( void )
 {
@@ -178,7 +165,7 @@ uint32_t H264parser::uv  ( int numBits )
 }
 
 // unsigned exp-golomb int (process outlined in spec)
-uint32_t H264parser::uev ( void ) // not working
+uint32_t H264parser::uev ( void )
 {
 	uint8_t  numZeroes = 0;
 	uint32_t code      = 0;
@@ -199,7 +186,7 @@ uint32_t H264parser::uev ( void ) // not working
 }
 
 // signed exp-golomb int (process outlined in spec)
-int32_t  H264parser::sev ( void ) // not working
+int32_t  H264parser::sev ( void )
 {
 	uint32_t numZeroes = 0;
 	uint32_t code      = 0;
@@ -238,10 +225,6 @@ H264parser::~H264parser( void )
 
 		delete SH[ i ];
 	}
-
-	// more bad magic numbers, needs to go
-	for( int i = 0; i < 6; ++i )
-		delete procParams[ i ];
 
 	free( SH );
 

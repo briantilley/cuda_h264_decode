@@ -1,8 +1,4 @@
-#include <string>
-#include <string.h>
 #include <iostream>
-#include <stdint.h>
-#include <unistd.h>
 
 #include "inc/constants.h"
 #include "inc/types.h"
@@ -53,7 +49,7 @@ void H264parser::fillParams( )
 
     cuvidPicParams->PicWidthInMbs = SPS.pic_width_in_mbs_minus1 + 1;
     cuvidPicParams->FrameHeightInMbs = ( 2 - SPS.frame_mbs_only_flag ) * ( SPS.pic_height_in_map_units_minus1 + 1 );
-    cuvidPicParams->CurrPicIdx = ( cuvidPicParams->intra_pic_flag ) ? 0 : cuvidPicParams->CurrPicIdx;
+    // cuvidPicParams->CurrPicIdx = ( cuvidPicParams->intra_pic_flag ) ? 0 : cuvidPicParams->CurrPicIdx; // reset the index at every IDR pic
     cuvidPicParams->field_pic_flag = SH[ 0 ]->field_pic_flag;
     cuvidPicParams->bottom_field_flag = SH[ 0 ]->bottom_field_flag;
     // second_field handled in H264parser::parseFrame switch statement
@@ -67,17 +63,6 @@ void H264parser::fillParams( )
 	cuvidPicParams->intra_pic_flag = idr_pic_flag;
 
     updateDPB( ); // manage the decoded picture buffer
-
-    // CUVIDPROCPARAMS
-    // in all likelihood, this is entirely unnecessary
-    // will probably be removed
-    ++pPidx; pPidx %= 6;
-    memset( procParams[ pPidx ], 0, sizeof( CUVIDPROCPARAMS ) );
-
-    // procParams[ pPidx ]->progressive_frame = !cuvidPicParams->field_pic_flag;
-    // procParams[ pPidx ]->second_field = cuvidPicParams->second_field;
-    // procParams[ pPidx ]->top_field_first = !cuvidPicParams->second_field == !cuvidPicParams->bottom_field_flag;
-    // procParams[ pPidx ]->unpaired_field = !procParams[ pPidx ]->progressive_frame;
 }
 
 // functions for managing the decoded picture buffer
