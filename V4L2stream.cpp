@@ -12,7 +12,7 @@ using std::endl;
 using std::string;
 
 // simple member initialization
-V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
+V4L2stream::V4L2stream( uint32_t in_width, uint32_t in_height, string in_device, uint32_t in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
 
 // turn off the stream and close the device file as cleanup
 V4L2stream::~V4L2stream( void )
