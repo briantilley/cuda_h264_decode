@@ -11,11 +11,8 @@ using std::cout;
 using std::endl;
 using std::string;
 
-using std::max;
-using std::min;
-
 // simple member initialization
-V4L2stream::V4L2stream( uint32_t in_width, uint32_t in_height, string in_device, uint32_t in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
+V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
 
 // turn off the stream and close the device file as cleanup
 V4L2stream::~V4L2stream( void )
@@ -130,120 +127,23 @@ void V4L2stream::off( void )
 	}
 }
 
-int32_t V4L2stream::changeControl( V4L2stream_ctrl_type ctrl,
-	int32_t ctrl_value,
-	V4L2stream_change_type change )
-{
-	int32_t tempVal;
-
-	if( V4L2stream_ABSOLUTE == change )
-		switch( ctrl )
-		{
-			case V4L2stream_EXPOSURE:
-
-				ext_ctrls.count = 1;
-				ext_ctrls.ctrl_class = V4L2_CTRL_CLASS_CAMERA;
-				ext_ctrls.controls = ( v4l2_ext_control* )malloc( sizeof( v4l2_ext_control ) );
-
-				ext_ctrls.controls[ 0 ].id     = V4L2_CID_EXPOSURE_ABSOLUTE;
-				ext_ctrls.controls[ 0 ].value  = max( 3, min( ctrl_value, 2047 ) );
-
-				if( -1 == xioctl( fd, VIDIOC_S_EXT_CTRLS, &ext_ctrls ) )
-				{
-					perror( "V4L2stream::changeControl" );
-					return 1;
-				}
-
-			break;
-			case V4L2stream_NULL:
-				std::cerr << "null control type is invalid" << endl;
-				return 1;
-			break;
-			default:
-				std::cerr << "control type not recognized" << endl;
-				return 1;
-			break;
-		}
-
-	else if( V4L2stream_RELATIVE == change )
-		switch( ctrl )
-		{
-			case V4L2stream_EXPOSURE:
-
-				ext_ctrls.count = 1;
-				ext_ctrls.ctrl_class = V4L2_CTRL_CLASS_CAMERA;
-				ext_ctrls.controls = ( v4l2_ext_control* )malloc( sizeof( v4l2_ext_control ) );
-
-				ext_ctrls.controls[ 0 ].id     = V4L2_CID_EXPOSURE_ABSOLUTE;
-				ext_ctrls.controls[ 0 ].size   = 0;
-				
-				if( -1 == xioctl( fd, VIDIOC_G_EXT_CTRLS, &ext_ctrls ) )
-				{
-					if( ENOSPC == errno )
-					{
-						cout << ext_ctrls.controls[ 0 ].size;
-						if( -1 == xioctl( fd, VIDIOC_G_EXT_CTRLS, &ext_ctrls ) )
-						{
-							perror( "V4L2stream::changeControl ENOSPC == errno" );
-							return 1;
-						}
-					}
-					else
-					{
-						perror( "V4L2stream::changeControl ENOSPC != errno" );
-						return 1;
-					}
-				}
-
-				tempVal = ext_ctrls.controls[ 0 ].value + ctrl_value;
-				
-				tempVal = max( 3, min( tempVal, 2047 ) );
-				
-				ext_ctrls.controls[ 0 ].value = tempVal;
-				
-				if( -1 == xioctl( fd, VIDIOC_S_EXT_CTRLS, &ext_ctrls ) )
-				{
-					perror( "V4L2stream::changeControl" );
-					return 1;
-				}
-
-			break;
-			case V4L2stream_NULL:
-				std::cerr << "null control type is invalid" << endl;
-				return 1;
-			break;
-			default:
-				std::cerr << "control type not recognized" << endl;
-				return 1;
-			break;
-		}
-
-	else
-	{
-		std::cerr << "change type not recognized" << endl;
-		return 1;
-	}
-
-	return 0;
-}
-
 // retrieve one frame from V4L2, run the processing callback on the data,
 // and give the frame buffer back to V4L2
-void V4L2stream::getFrame( int32_t ( *ps_callback )( uint8_t*, uint32_t ) )
+void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
 	
 	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
 	{
-		perror( "dequeuing buffer" );
+		std::cerr << "error while retrieving frame" << endl;
 		return;
 	}
 
 	if ( -1 == ps_callback( buf_array[ buffer.index ].start, buffer.bytesused ) )
-		std::cerr << "frame processing callback failed" << endl;
+		cout << "frame processing callback failed" << endl;
 
 	if( -1 == xioctl( fd, VIDIOC_QBUF, &buffer ) )
 	{
-		perror( "enqueuing buffer" );
+		std::cerr << "error while releasing buffer" << endl;
 		return;
 	}
 

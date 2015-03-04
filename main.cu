@@ -18,7 +18,7 @@ CUVIDDECODECREATEINFO *pdci = new CUVIDDECODECREATEINFO;
 
 // this function is run on data from one frame of video
 // essentially, this is the processing callback
-int32_t frame_handler( uint8_t* start, uint32_t length )
+int frame_handler( uint8_t* start, uint32_t length )
 {
 	std::cerr << "." << std::flush;
 	
@@ -50,7 +50,7 @@ int main( int argc, char** argv )
 	// fill video decoder creation struct
 	pdci->ulWidth             = CODED_WIDTH;
 	pdci->ulHeight            = CODED_HEIGHT;
-	pdci->ulNumDecodeSurfaces = DECODE_SURFACES;
+	pdci->ulNumDecodeSurfaces = 15;
 	pdci->CodecType           = CUVID_CODEC;
 	pdci->ChromaFormat        = CUVID_CHROMA;
 	pdci->ulCreationFlags     = CUVID_FLAGS;
@@ -62,7 +62,7 @@ int main( int argc, char** argv )
 	pdci->DeinterlaceMode     = CUVID_DEINTERLACE;
 	pdci->ulTargetWidth       = TARGET_WIDTH;
 	pdci->ulTargetHeight      = TARGET_HEIGHT;
-	pdci->ulNumOutputSurfaces = OUTPUT_SURFACES;
+	pdci->ulNumOutputSurfaces = 8;
 	pdci->vidLock             = NULL;
 	pdci->target_rect.left    = 0;
 	pdci->target_rect.top     = 0;
@@ -71,14 +71,9 @@ int main( int argc, char** argv )
 
 	cuvidCreateDecoder( pDecoder, pdci );
 
-		stream.changeControl( V4L2stream_EXPOSURE, 10, V4L2stream_ABSOLUTE );
 	stream.on( );
 	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
-	{
 		stream.getFrame( &frame_handler );
-		// stream.changeControl( V4L2stream_EXPOSURE, -1, V4L2stream_RELATIVE );
-		// stream.changeControl( V4L2stream_EXPOSURE, 1, V4L2stream_RELATIVE );
-	}
 	stream.off( );
 
 	cout << endl;
