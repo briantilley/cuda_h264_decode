@@ -1,15 +1,10 @@
-// this class is here to handle image data from V4L2
-// the particular webcam in use (Logitech C920)
-// supplies hardware-encoded H264 natively
+// This is a wrapper class for V4L2
+// meant to handle C style operation
+// with a C++ interface.
 
-#include <string>
-#include <string.h>
 #include <iostream>
-#include <stdint.h>
-#include <unistd.h>
 
 #include "inc/constants.h"
-#include "inc/types.h"
 #include "inc/classes.h"
 
 using std::cout;
@@ -17,7 +12,6 @@ using std::endl;
 using std::string;
 
 // simple member initialization
-V4L2stream::V4L2stream( void ): width( TARGET_WIDTH ), height( TARGET_HEIGHT ), device( DEFAULT_DEVICE ), numBufs( DEFAULT_NUMBUFS ) { }
 V4L2stream::V4L2stream( int in_width, int in_height, string in_device, int in_numBufs ): width( in_width ), height( in_height ), device( in_device ), numBufs( in_numBufs ) { }
 
 // turn off the stream and close the device file as cleanup
@@ -26,27 +20,6 @@ V4L2stream::~V4L2stream( void )
 	off( );
 	close( fd );
 }
-
-// set/get functions to encapsulate data members
-void V4L2stream::setWidth( int32_t in_width )
-{ width = in_width; }
-int32_t V4L2stream::getWidth( void )
-{ return width; }
-
-void V4L2stream::setHeight( int32_t in_height )
-{ height = in_height; }
-int32_t V4L2stream::getHeight( void )
-{ return height; }
-
-void V4L2stream::setDevice( string in_device )
-{ device = in_device; }
-string V4L2stream::getDevice( void )
-{ return device; }
-
-void V4L2stream::setBufs( int32_t in_numBufs )
-{ numBufs = in_numBufs; }
-int32_t V4L2stream::getBufs( void )
-{ return numBufs; }
 
 // initialize the stream object, all V4L2 specific code
 // some hardcoded magic values here

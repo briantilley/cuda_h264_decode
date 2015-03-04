@@ -1,24 +1,25 @@
-#include <string>
+// This is a helper class meant for cleanly
+// reading individual bits in a byte array.
+
+// The functions dedicated to reading
+// data start at the current bit position
+// and place the bit position immediately
+// after the data read.
+
 #include <iostream>
-#include <stdint.h>
 
 #include "inc/constants.h"
-#include "inc/RBSP_structs.h"
-#include "inc/types.h"
 #include "inc/classes.h"
 
 using std::cout;
 using std::endl;
 using std::string;
 
-// initialize to NULL byte with MSB
-BitPos::BitPos(): byte( NULL ), mask( 0x80 ) { }
-
-// initialize to MSB of given byte
-BitPos::BitPos( uint8_t* in_byte ): byte( in_byte ), mask( 0x80 ) { }
-
 // initialize with given position info
-BitPos::BitPos( uint8_t* in_byte, uint8_t in_mask ): byte( in_byte ), mask( in_mask ) { }
+BitPos::BitPos( uint8_t* in_byte, uint8_t in_mask ): byte( in_byte ), mask( in_mask )
+{
+	if( 0 == mask ) mask = 0x80;
+}
 
 // getters and setters for member values
 uint8_t* BitPos::getByte( void )

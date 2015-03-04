@@ -1,26 +1,21 @@
-// class declarations
+// class declarations for BitPos, H264parser, and V4L2stream
 
 #ifndef CLASSES_H
 #define CLASSES_H
-
-#include <stdint.h>
-#include <string>
 
 using std::string;
 
 class BitPos
 {
 	public:
-		
-		BitPos( void );
-		BitPos( uint8_t* );
-		BitPos( uint8_t*, uint8_t );
+
+		BitPos( uint8_t* byte, uint8_t bitmask );
 		~BitPos( void );
 
 		uint8_t* getByte( void );
-		void setByte( uint8_t* );
+		void setByte( uint8_t* byte );
 		uint8_t getMask( void );
-		void setMask( uint8_t  );
+		void setMask( uint8_t bitmask );
 
 		uint32_t readBits( int32_t numBits );
 		uint8_t readByte( void );
@@ -37,34 +32,33 @@ class BitPos
 
 };
 
-#include <nvcuvid.h>
+// H264parser
+
+#include <nvcuvid.h> // to be removed
 #include "RBSP_structs.h"
+
+#define NAL_UNIT_START    0x000001
+#define DEFAULT_SH_COUNT  4
 
 class H264parser
 {
 	public:
 
-		H264parser( void );
-		H264parser( BitPos );
+		H264parser( BitPos starting_position );
 		~H264parser( void );
 
 		BitPos getPos( void );
-		void setPos( BitPos );
+		void setPos( BitPos position );
 
-		void parseFrame( uint32_t );
-		void parseFrame( const uint8_t*, uint32_t );
+		void parseFrame( const uint8_t* start, uint32_t payload_size );
 
-		int32_t idx( void );
-
-		CUVIDPICPARAMS*  cuvidPicParams;
+		CUVIDPICPARAMS*  cuvidPicParams; // to be removed
 
 	private:
 
-		inline void init( void );
-
 		slice_header* makeSliceHeader( void );
 
-		uint32_t uv  ( int32_t );
+		uint32_t uv  ( int32_t numBits );
 		uint32_t uev ( void );
 		int32_t  sev ( void );
 
@@ -77,13 +71,11 @@ class H264parser
 		void predWeightTable( uint8_t, uint8_t );
 		void decRefPicMark( uint8_t, uint8_t );
 
+		uint8_t weightScale4x4[6][16];
+		uint8_t weightScale8x8[2][64];
 		bool defaultMatrix4x4[ 6 ];
 		bool defaultMatrix8x8[ 2 ];
 		void scaling_list( uint8_t*, uint8_t, bool* );
-
-		void fillParams( void );
-		void updateDPB( void );
-		void clearDPB( void );
 
 		BitPos pos;
 
@@ -103,40 +95,41 @@ class H264parser
 
 		uint8_t SHidx;
 		uint8_t maxSHcount;
+
+	// I don't like having to do friend functions, but it's not a big problem
+	friend int fillCuvidPicParams( H264parser*, CUVIDPICPARAMS* );
+	friend int updateCuvidDPB( H264parser*, CUVIDPICPARAMS* );
+	friend int clearCuvidDPB( CUVIDPICPARAMS* );
 };
+
+// V4L2stream dependencies
 
 #include <linux/videodev2.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <unistd.h>
+
+typedef struct _array_buf
+{
+	uint8_t* start;
+	uint32_t length;
+} array_buf;
 
 class V4L2stream
 {
 	public:
 
-		V4L2stream( void );
-		V4L2stream( int, int, string, int );
+		V4L2stream( int width, int height, string device_filename, int num_input_surfaces );
 		~V4L2stream( void );
-	
-		void setWidth( int32_t );
-		int32_t getWidth( void );
-
-		void setHeight( int32_t );
-		int32_t getHeight( void );
-		
-		void setDevice( string );
-		string getDevice( void );
-
-		void setBufs( int32_t );
-		int32_t getBufs( void );
 
 		void init( void );
 
 		void on( void );
 		void off( void );
 
-		void getFrame( int ( * )( uint8_t*, uint32_t ) );
+		void getFrame( int ( * input_callback)( uint8_t* start, uint32_t payload_size ) );
 
 	private:
 
@@ -157,9 +150,5 @@ class V4L2stream
 		struct v4l2_ext_controls   ext_ctrls;
 
 };
-
-// from cuda.cu
-
-void mapSurface( int );
 
 #endif
