@@ -34,7 +34,8 @@ class BitPos
 
 // H264parser
 
-#include <nvcuvid.h> // to be removed
+#include <nvcuvid.h> // only included here for friend functions
+
 #include "RBSP_structs.h"
 
 #define NAL_UNIT_START    0x000001
@@ -52,7 +53,7 @@ class H264parser
 
 		void parseFrame( const uint8_t* start, uint32_t payload_size );
 
-		CUVIDPICPARAMS*  cuvidPicParams; // to be removed
+		// CUVIDPICPARAMS*  cuvidPicParams; // to be removed
 
 	private:
 
@@ -102,7 +103,7 @@ class H264parser
 	friend int clearCuvidDPB( CUVIDPICPARAMS* );
 };
 
-// V4L2stream dependencies
+// V4L2stream
 
 #include <linux/videodev2.h>
 #include <errno.h>
@@ -117,11 +118,23 @@ typedef struct _array_buf
 	uint32_t length;
 } array_buf;
 
+typedef enum _ctrl_type
+{
+	V4L2stream_NULL,
+	V4L2stream_EXPOSURE
+} V4L2stream_ctrl_type;
+
+typedef enum _change_type
+{
+	V4L2stream_ABSOLUTE,
+	V4L2stream_RELATIVE
+} V4L2stream_change_type;
+
 class V4L2stream
 {
 	public:
 
-		V4L2stream( int width, int height, string device_filename, int num_input_surfaces );
+		V4L2stream( uint32_t width, uint32_t height, string device_filename, uint32_t num_input_surfaces );
 		~V4L2stream( void );
 
 		void init( void );
@@ -129,7 +142,9 @@ class V4L2stream
 		void on( void );
 		void off( void );
 
-		void getFrame( int ( * input_callback)( uint8_t* start, uint32_t payload_size ) );
+		int32_t changeControl( V4L2stream_ctrl_type, int32_t ctrl_value, V4L2stream_change_type );
+
+		void getFrame( int32_t ( * input_callback )( uint8_t* start, uint32_t payload_size ) );
 
 	private:
 
@@ -148,6 +163,45 @@ class V4L2stream
 		struct v4l2_requestbuffers request_bufs;
 		struct v4l2_buffer         buffer;
 		struct v4l2_ext_controls   ext_ctrls;
+
+};
+
+// CUVIDdecoder
+
+#include <nvcuvid.h>
+
+#define CODED_WIDTH       1920 // video dimensions should not be constants
+#define CODED_HEIGHT      1088
+#define TARGET_WIDTH      1920
+#define TARGET_HEIGHT     1080
+
+#define DECODE_SURFACES   8 // higher numbers = more memory usage
+#define OUTPUT_SURFACES   8 // lower  numbers = possible slowdown
+
+#define CUVID_CODEC       cudaVideoCodec_H264
+#define CUVID_CHROMA      cudaVideoChromaFormat_422
+#define CUVID_FLAGS       cudaVideoCreate_Default
+#define CUVID_OUT_FORMAT  cudaVideoSurfaceFormat_NV12
+#define CUVID_DEINTERLACE cudaVideoDeinterlaceMode_Adaptive
+
+typedef enum _CUVIDdecoder_fmt
+{
+	CUVIDdecoder_NULL,
+	CUVIDdecoder_H264
+} CUVIDdecoder_fmt;
+
+class CUVIDdecoder
+{
+	public:
+		CUVIDdecoder( uint32_t width, uint32_t height, CUVIDdecoder_fmt, CUcontext* );
+		~CUVIDdecoder( );
+
+		// can't decide whether or not to split decode and map into two methods
+		int32_t decodeFrame( CUVIDPICPARAMS*, int32_t ( * cuda_callback )( CUdeviceptr, uint32_t* p_mem_pitch ) );
+
+	private:
+
+
 
 };
 

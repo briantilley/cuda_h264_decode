@@ -10,7 +10,7 @@
 #define TARGET_HEIGHT     1080
 
 #define DECODE_SURFACES   8
-#define DISPLAY_SURFACES  8
+#define OUTPUT_SURFACES   8
 
 #define CUVID_CODEC       cudaVideoCodec_H264
 #define CUVID_CHROMA      cudaVideoChromaFormat_422
