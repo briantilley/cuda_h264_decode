@@ -15,7 +15,6 @@ using std::cout;
 using std::endl;
 using std::string;
 
-// initialize with given position info
 BitPos::BitPos( uint8_t* in_byte, uint8_t in_mask ): byte( in_byte ), mask( in_mask )
 {
 	if( 0 == mask ) mask = 0x80;

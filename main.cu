@@ -9,36 +9,45 @@ using std::endl;
 using std::string;
 
 // create global variables
-H264parser parser           = H264parser( BitPos( NULL, 0 ) );
-CUVIDPICPARAMS* picParams   = new CUVIDPICPARAMS;
-CUdevice dev;
-CUcontext* pCtx             = new CUcontext;
-CUvideodecoder* pDecoder    = new CUvideodecoder;
-CUVIDDECODECREATEINFO *pdci = new CUVIDDECODECREATEINFO;
+H264parser* parser;
+CUVIDPICPARAMS* picParams;
+CUVIDdecoder* decoder;
 
-// this function is run on data from one frame of video
-// essentially, this is the processing callback
-int frame_handler( uint8_t* start, uint32_t length )
+CUdevice dev;
+
+// callback for decoded frame input
+int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
+{
+
+	return 0;
+}
+
+// callback for coded frame input
+int32_t coded_callback( uint8_t* start, uint32_t length )
 {
 	std::cerr << "." << std::flush;
 	
-	parser.parseFrame( start, length );
+	parser->parseFrame( start, length );
 
-	fillCuvidPicParams( &parser, picParams );
-	updateCuvidDPB( &parser, picParams );
+	fillCuvidPicParams( parser, picParams );
+	updateCuvidDPB( parser, picParams );
 
-	cuvidDecodePicture( *pDecoder, picParams );
+	decoder->getDecodedFrame( picParams, decoded_callback );
 
 	return 0;
 }
 
 int main( int argc, char** argv )
 {
-	// create a V4L2 stream object
-	V4L2stream stream = V4L2stream( TARGET_WIDTH, TARGET_HEIGHT, "/dev/video0", 8 );
+	// create a V4L2stream object
+	V4L2stream stream = V4L2stream( WIDTH, HEIGHT, DEVICE, INPUT_SURFACES );
 	stream.init( );
 
+	// create an H264parser object
+	parser = new H264parser( BitPos( NULL, 0 ) );
+
 	// initializing CUVIDPICPARAMS, consider putting struct in decoder class
+	picParams = new CUVIDPICPARAMS;
 	picParams->CurrPicIdx = -1;
 	clearCuvidDPB( picParams );
 
@@ -47,33 +56,12 @@ int main( int argc, char** argv )
 	cudaSetDevice( 0 );
 	cudaGetDevice( &dev );
 
-	// fill video decoder creation struct
-	pdci->ulWidth             = CODED_WIDTH;
-	pdci->ulHeight            = CODED_HEIGHT;
-	pdci->ulNumDecodeSurfaces = 15;
-	pdci->CodecType           = CUVID_CODEC;
-	pdci->ChromaFormat        = CUVID_CHROMA;
-	pdci->ulCreationFlags     = CUVID_FLAGS;
-	pdci->display_area.left   = 0;
-	pdci->display_area.top    = 0;
-	pdci->display_area.right  = TARGET_WIDTH;
-	pdci->display_area.bottom = TARGET_HEIGHT;
-	pdci->OutputFormat        = CUVID_OUT_FORMAT;
-	pdci->DeinterlaceMode     = CUVID_DEINTERLACE;
-	pdci->ulTargetWidth       = TARGET_WIDTH;
-	pdci->ulTargetHeight      = TARGET_HEIGHT;
-	pdci->ulNumOutputSurfaces = 8;
-	pdci->vidLock             = NULL;
-	pdci->target_rect.left    = 0;
-	pdci->target_rect.top     = 0;
-	pdci->target_rect.right   = TARGET_WIDTH;
-	pdci->target_rect.bottom  = TARGET_HEIGHT;
-
-	cuvidCreateDecoder( pDecoder, pdci );
+	// create a CUVIDdecoder object
+	decoder = new CUVIDdecoder( WIDTH, HEIGHT, CUVIDdecoder_H264 );
 
 	stream.on( );
 	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
-		stream.getFrame( &frame_handler );
+		stream.getCodedFrame( &coded_callback );
 	stream.off( );
 
 	cout << endl;
@@ -86,9 +74,6 @@ int main( int argc, char** argv )
 void cleanUp( void )
 {
 	delete picParams;
-	delete pCtx;
-	delete pDecoder;
-	delete pdci;
 }
 
 int fillCuvidPicParams( H264parser* parser, CUVIDPICPARAMS* params )

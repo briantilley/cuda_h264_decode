@@ -144,7 +144,7 @@ class V4L2stream
 
 		int32_t changeControl( V4L2stream_ctrl_type, int32_t ctrl_value, V4L2stream_change_type );
 
-		void getFrame( int32_t ( * input_callback )( uint8_t* start, uint32_t payload_size ) );
+		void getCodedFrame( int32_t ( * input_callback )( uint8_t* start, uint32_t payload_size ) );
 
 	private:
 
@@ -178,6 +178,8 @@ class V4L2stream
 #define DECODE_SURFACES   8 // higher numbers = more memory usage
 #define OUTPUT_SURFACES   8 // lower  numbers = possible slowdown
 
+#define DECODE_GAP        0 // number of frames decode should be ahead of map
+
 #define CUVID_CODEC       cudaVideoCodec_H264
 #define CUVID_CHROMA      cudaVideoChromaFormat_422
 #define CUVID_FLAGS       cudaVideoCreate_Default
@@ -193,15 +195,17 @@ typedef enum _CUVIDdecoder_fmt
 class CUVIDdecoder
 {
 	public:
-		CUVIDdecoder( uint32_t width, uint32_t height, CUVIDdecoder_fmt, CUcontext* );
+
+		CUVIDdecoder( uint32_t width, uint32_t height, CUVIDdecoder_fmt );
 		~CUVIDdecoder( );
 
 		// can't decide whether or not to split decode and map into two methods
-		int32_t decodeFrame( CUVIDPICPARAMS*, int32_t ( * cuda_callback )( CUdeviceptr, uint32_t* p_mem_pitch ) );
+		int32_t getDecodedFrame( CUVIDPICPARAMS*, int32_t ( * cuda_callback )( const CUdeviceptr, uint32_t pitch ) );
 
 	private:
 
-
+		CUvideodecoder         decoder;
+		CUVIDDECODECREATEINFO* pdci;
 
 };
 

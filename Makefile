@@ -5,7 +5,7 @@ STD=g++
 #filenames
 MAIN=main.cu
 OUTPUT=out
-OBJECTS=BitPos.o H264parser.o V4L2stream.o
+OBJECTS=V4L2stream.o BitPos.o H264parser.o CUVIDdecoder.o cuda.o
 
 #headers
 INC=-I/usr/local/cuda-6.5/include
@@ -28,8 +28,11 @@ main: $(MAIN)
 	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
 
 # generate object files from all source files sans main.cpp
-classes: bitpos parser v4l2
+classes: v4l2 bitpos parser cuvid cuda
 	@# will automatically make targets
+
+v4l2: V4L2stream.cpp
+	$(STD) V4L2stream.cpp -c $(INC) $(FLAGS)
 
 bitpos: BitPos.cpp
 	$(STD) BitPos.cpp -c $(INC) $(FLAGS)
@@ -37,8 +40,11 @@ bitpos: BitPos.cpp
 parser: H264parser.cpp
 	$(STD) H264parser.cpp -c $(INC) $(FLAGS)
 
-v4l2: V4L2stream.cpp
-	$(STD) V4L2stream.cpp -c $(INC) $(FLAGS)
+cuvid: CUVIDdecoder.cpp
+	$(CUDA) CUVIDdecoder.cpp -c $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
+
+cuda: cuda.cu
+	$(CUDA) cuda.cu -c -lcudart $(CUFLAGS)
 
 # run target is for convenience, executes the program
 run: $(OUTPUT)

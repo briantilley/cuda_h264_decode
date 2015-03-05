@@ -129,7 +129,7 @@ void V4L2stream::off( void )
 
 // retrieve one frame from V4L2, run the processing callback on the data,
 // and give the frame buffer back to V4L2
-void V4L2stream::getFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
+void V4L2stream::getCodedFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
 	
 	if( -1 == xioctl( fd, VIDIOC_DQBUF, &buffer ) )
