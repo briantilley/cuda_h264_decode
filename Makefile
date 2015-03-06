@@ -5,7 +5,7 @@ STD=g++
 #filenames
 MAIN=main.cu
 OUTPUT=out
-OBJECTS=V4L2stream.o BitPos.o H264parser.o CUVIDdecoder.o cuda.o
+OBJECTS=V4L2stream.o BitPos.o H264parser.o CUVIDdecoder.o GLviewer.o cuda.o
 
 #headers
 INC=-I/usr/local/cuda-6.5/include
@@ -16,7 +16,7 @@ LIB_PATHS=-L/usr/lib/nvidia-340
 
 #flags
 FLAGS=-std=gnu++11
-CUFLAGS=-std=c++11
+CUFLAGS=-std=c++11 -w
 
 #targets
 all: classes main
@@ -28,7 +28,7 @@ main: $(MAIN)
 	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
 
 # generate object files from all source files sans main.cpp
-classes: v4l2 bitpos parser cuvid cuda
+classes: v4l2 bitpos parser cuvid cuda gl
 	@# will automatically make targets
 
 v4l2: V4L2stream.cpp
@@ -43,8 +43,11 @@ parser: H264parser.cpp
 cuvid: CUVIDdecoder.cpp
 	$(CUDA) CUVIDdecoder.cpp -c $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
 
+gl: GLviewer.cpp
+	$(CUDA) GLviewer.cpp -c -lglfw -lGLEW -lGL $(CUDA_LIBS) $(CUFLAGS)
+
 cuda: cuda.cu
-	$(CUDA) cuda.cu -c -lcudart $(CUFLAGS)
+	$(CUDA) cuda.cu -c $(CUDA_LIBS) $(CUFLAGS)
 
 # run target is for convenience, executes the program
 run: $(OUTPUT)

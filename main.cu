@@ -1,4 +1,17 @@
+// Goal of this application is to
+
+// 1. retrieve an H264-encoded frame of video from a webcam with V4L2
+// 2. parse the encoded frame for header information
+// 3. decode the encoded frame on the GPU with NVCUVID
+// 4. process the decoded frame on the GPU with CUDA
+// 5. display the processed frame with openGL
+
+// Using this program flow, raw image data originates on and is not
+// copied via the PCIe bus or USB, which would cause the program
+// to spend most of its time waiting for data to transfer.
+
 #include <iostream>
+#include <fstream>
 
 #include "inc/constants.h"
 #include "inc/classes.h"
@@ -7,32 +20,34 @@
 using std::cout;
 using std::endl;
 using std::string;
+using std::ifstream;
 
 // create global variables
 H264parser* parser;
 CUVIDPICPARAMS* picParams;
 CUVIDdecoder* decoder;
+// GLviewer* viewer;
 
 CUdevice dev;
-
-// callback for decoded frame input
-int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
-{
-
-	return 0;
-}
 
 // callback for coded frame input
 int32_t coded_callback( uint8_t* start, uint32_t length )
 {
-	std::cerr << "." << std::flush;
-	
-	parser->parseFrame( start, length );
+    std::cerr << "." << std::flush;
+    
+    parser->parseFrame( start, length );
 
-	fillCuvidPicParams( parser, picParams );
-	updateCuvidDPB( parser, picParams );
+    fillCuvidPicParams( parser, picParams );
+    updateCuvidDPB( parser, picParams );
 
-	decoder->getDecodedFrame( picParams, decoded_callback );
+    decoder->getDecodedFrame( picParams, decoded_callback );
+
+    return 0;
+}
+
+// callback for decoded frame input
+int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
+{
 
 	return 0;
 }
@@ -59,6 +74,9 @@ int main( int argc, char** argv )
 	// create a CUVIDdecoder object
 	decoder = new CUVIDdecoder( WIDTH, HEIGHT, CUVIDdecoder_H264 );
 
+    // create a GLviewer object
+    // viewer = new GLviewer( /*args*/ );
+
 	stream.on( );
 	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
 		stream.getCodedFrame( &coded_callback );
@@ -71,9 +89,28 @@ int main( int argc, char** argv )
 	return 0;
 }
 
+// auxiliary functions
+
 void cleanUp( void )
 {
 	delete picParams;
+}
+
+string loadTxtFileAsString( const char* shaderFileName )
+{
+    string source;
+    string buf = "";
+    ifstream file( shaderFileName, std::ios::in );
+
+    while( file.good( ) )
+    {
+        std::getline( file, buf );
+        source.append( buf + "\n" );
+    }
+
+    file.close( );
+
+    return source;
 }
 
 int fillCuvidPicParams( H264parser* parser, CUVIDPICPARAMS* params )
