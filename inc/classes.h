@@ -34,7 +34,7 @@ private:
 
 // H264parser
 
-#include <nvcuvid.h> // only included here for friend functions
+#include <cuviddec.h> // only included here for friend functions
 
 #include "RBSP_structs.h"
 
@@ -223,42 +223,53 @@ private:
 
 #define WINDOW_NAME "decode2"
 
-#define FULLSCREEN
+// #define FULLSCREEN
 
 #ifdef FULLSCREEN //---
 #define WINDOW_WIDTH  1920
 #define WINDOW_HEIGHT 1080
 #else //---
-#define WINDOW_WIDTH  1280
-#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH  640
+#define WINDOW_HEIGHT 480
 #endif //---
 
-#ifdef GL_RESIZEABLE // not worrying about resizing now
-#undef GL_RESIZEABLE
+#ifdef GLFW_RESIZEABLE // not worrying about resizing now
+#undef GLFW_RESIZEABLE
 #endif
+
+#define MAX_SHADERS   2
+
+typedef enum _GLcolorMode
+{
+	GLcolor_BW,
+	GLcolor_RGBA
+} GLcolorMode;
 
 class GLviewer
 {
 public:
 
-	GLviewer( uint32_t width, uint32_t height );
+	GLviewer( uint32_t width, uint32_t height, GLcolorMode );
 	~GLviewer( void );
 
-	int32_t openWindow( void );
-	int32_t closeWindow( void );
+	int32_t writeToOutput( int32_t ( * )( uint8_t*, uint32_t, uint32_t, bool ) );
 
-	int32_t addShader( std::string );
-	int32_t linkShaderProgram( void ); // must be called after all addShader calls
+	int32_t mapOutputImage( uint8_t** );
+	int32_t unmapOutputImage( void );
+
+	int32_t display( void );
 
 private:
 
 	GLFWwindow* window;
 	
 	GLuint pbo; // pixel buffer object - the buffer CUDA writes images to
-	GLuint vbo; // vertices for the primitives GL renders to
 	GLuint tex; // texture - what GL renders
 
-	GLuint shaderProgram; // the end program for shaders
+	GLcolorMode colorMode;
+
+	uint32_t tex_pboWidth;
+	uint32_t tex_pboHeight;
 
 };
 

@@ -12,4 +12,10 @@ int fillCuvidPicParams( H264parser* parser, CUVIDPICPARAMS* params );
 int updateCuvidDPB( H264parser* parser, CUVIDPICPARAMS* params );
 int clearCuvidDPB( CUVIDPICPARAMS* params );
 
+// cuda
+
+int32_t hNV12toRGBA( const uint8_t*, uint8_t**, const uint32_t, uint32_t*, const uint32_t, const uint32_t );
+
+int32_t hNV12toBW( const uint8_t*, uint8_t**, const uint32_t, uint32_t*, const uint32_t, const uint32_t );
+
 #endif

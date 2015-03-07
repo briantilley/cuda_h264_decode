@@ -26,7 +26,7 @@ using std::ifstream;
 H264parser* parser;
 CUVIDPICPARAMS* picParams;
 CUVIDdecoder* decoder;
-// GLviewer* viewer;
+GLviewer* viewer;
 
 CUdevice dev;
 
@@ -48,6 +48,15 @@ int32_t coded_callback( uint8_t* start, uint32_t length )
 // callback for decoded frame input
 int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
 {
+    const uint8_t* src = ( const uint8_t* )devPtr;
+    uint8_t* dest = NULL;
+    uint32_t pitchOut = 0;
+
+    viewer->mapOutputImage( &dest );
+    hNV12toBW( src, &dest, pitch, &pitchOut, WIDTH, HEIGHT );
+
+    viewer->display( );
+    viewer->unmapOutputImage( );
 
 	return 0;
 }
@@ -71,11 +80,11 @@ int main( int argc, char** argv )
 	cudaSetDevice( 0 );
 	cudaGetDevice( &dev );
 
+    // create a GLviewer object
+    viewer = new GLviewer( WIDTH, HEIGHT, GLcolor_BW );
+
 	// create a CUVIDdecoder object
 	decoder = new CUVIDdecoder( WIDTH, HEIGHT, CUVIDdecoder_H264 );
-
-    // create a GLviewer object
-    // viewer = new GLviewer( /*args*/ );
 
 	stream.on( );
 	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)

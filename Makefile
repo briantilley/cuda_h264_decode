@@ -18,6 +18,8 @@ LIB_PATHS=-L/usr/lib/nvidia-340
 FLAGS=-std=gnu++11
 CUFLAGS=-std=c++11 -w
 
+GL_LINKS=-lglfw -lGLEW -lGL
+
 #targets
 all: classes main
 	@# runs classes and main targets in sequence
@@ -25,7 +27,7 @@ all: classes main
 
 # compile only main.cpp, then link preexisting object files from other sources
 main: $(MAIN)
-	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
+	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS) $(GL_LINKS)
 
 # generate object files from all source files sans main.cpp
 classes: v4l2 bitpos parser cuvid cuda gl
@@ -44,10 +46,10 @@ cuvid: CUVIDdecoder.cpp
 	$(CUDA) CUVIDdecoder.cpp -c $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
 
 gl: GLviewer.cpp
-	$(CUDA) GLviewer.cpp -c -lglfw -lGLEW -lGL $(CUDA_LIBS) $(CUFLAGS)
+	$(CUDA) GLviewer.cpp -c -lcudart $(GL_LINKS) $(CUFLAGS)
 
 cuda: cuda.cu
-	$(CUDA) cuda.cu -c $(CUDA_LIBS) $(CUFLAGS)
+	$(CUDA) cuda.cu -c -lcudart $(CUFLAGS)
 
 # run target is for convenience, executes the program
 run: $(OUTPUT)
