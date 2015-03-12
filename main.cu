@@ -23,6 +23,7 @@ using std::string;
 using std::ifstream;
 
 // create global variables
+V4L2stream* stream;
 H264parser* parser;
 CUVIDPICPARAMS* picParams;
 CUVIDdecoder* decoder;
@@ -53,10 +54,10 @@ int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
     uint32_t pitchOut = 0;
 
     viewer->mapOutputImage( &dest );
-    hNV12toBW( src, &dest, pitch, &pitchOut, WIDTH, HEIGHT );
+    hNV12toRGBA( src, &dest, pitch, &pitchOut, WIDTH, HEIGHT );
+    viewer->unmapOutputImage( );
 
     viewer->display( );
-    viewer->unmapOutputImage( );
 
 	return 0;
 }
@@ -64,8 +65,8 @@ int32_t decoded_callback( const CUdeviceptr devPtr, uint32_t pitch )
 int main( int argc, char** argv )
 {
 	// create a V4L2stream object
-	V4L2stream stream = V4L2stream( WIDTH, HEIGHT, DEVICE, INPUT_SURFACES );
-	stream.init( );
+	stream = new V4L2stream( WIDTH, HEIGHT, DEVICE, INPUT_SURFACES );
+	stream->init( );
 
 	// create an H264parser object
 	parser = new H264parser( BitPos( NULL, 0 ) );
@@ -75,21 +76,16 @@ int main( int argc, char** argv )
 	picParams->CurrPicIdx = -1;
 	clearCuvidDPB( picParams );
 
-	// CUDA code below is ugly and needs to be abstracted
-	// create context to appease cuda runtime
-	cudaSetDevice( 0 );
-	cudaGetDevice( &dev );
-
     // create a GLviewer object
-    viewer = new GLviewer( WIDTH, HEIGHT, GLcolor_BW );
+    // viewer creates both GL and CUDA contexts, must call before any other CUDA
+    viewer = new GLviewer( WIDTH, HEIGHT, GLcolor_RGBA );
 
 	// create a CUVIDdecoder object
 	decoder = new CUVIDdecoder( WIDTH, HEIGHT, CUVIDdecoder_H264 );
 
-	stream.on( );
-	for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
-		stream.getCodedFrame( &coded_callback );
-	stream.off( );
+	stream->on( );
+	while( true )//for( int i = 0; i < 1200; ++i) // "process" 1200 frames (40 seconds)
+		stream->getCodedFrame( &coded_callback );
 
 	cout << endl;
 
@@ -102,7 +98,12 @@ int main( int argc, char** argv )
 
 void cleanUp( void )
 {
+    stream->off( );
+    delete stream;
+    delete parser;
 	delete picParams;
+    delete decoder;
+    delete viewer;
 }
 
 string loadTxtFileAsString( const char* shaderFileName )

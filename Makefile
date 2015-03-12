@@ -11,7 +11,6 @@ OBJECTS=V4L2stream.o BitPos.o H264parser.o CUVIDdecoder.o GLviewer.o cuda.o
 INC=-I/usr/local/cuda-6.5/include
 
 #libraries
-CUDA_LIBS=-lnvcuvid -lcudart
 LIB_PATHS=-L/usr/lib/nvidia-340
 
 #flags
@@ -27,7 +26,7 @@ all: classes main
 
 # compile only main.cpp, then link preexisting object files from other sources
 main: $(MAIN)
-	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS) $(GL_LINKS)
+	$(CUDA) $(MAIN) $(OBJECTS) -o $(OUTPUT) $(INC) $(LIB_PATHS) -lnvcuvid -lcuda -lcudart $(CUFLAGS) $(GL_LINKS)
 
 # generate object files from all source files sans main.cpp
 classes: v4l2 bitpos parser cuvid cuda gl
@@ -43,7 +42,7 @@ parser: H264parser.cpp
 	$(STD) H264parser.cpp -c $(INC) $(FLAGS)
 
 cuvid: CUVIDdecoder.cpp
-	$(CUDA) CUVIDdecoder.cpp -c $(INC) $(LIB_PATHS) $(CUDA_LIBS) $(CUFLAGS)
+	$(CUDA) CUVIDdecoder.cpp -c -lnvcuvid -lcuda $(INC) $(LIB_PATHS) $(CUFLAGS)
 
 gl: GLviewer.cpp
 	$(CUDA) GLviewer.cpp -c -lcudart $(GL_LINKS) $(CUFLAGS)

@@ -9,6 +9,21 @@ using std::cout;
 using std::endl;
 using std::string;
 
+// cuda driver error checking
+#define cuErr(err) cuError( err, __FILE__, __LINE__ )
+inline void cuError( CUresult err, const char* file, uint32_t line, bool abort=false )
+{
+    if( CUDA_SUCCESS != err )
+    {
+    	const char* str;
+    	cuGetErrorString( err, &str );
+
+        std::cerr << "[" << file << ":" << line << "] ";
+        std::cerr << str << endl;
+        if( abort ) exit( err );
+    }
+}
+
 CUVIDdecoder::CUVIDdecoder( uint32_t width,
 	uint32_t height,
 	CUVIDdecoder_fmt format )
@@ -50,13 +65,13 @@ CUVIDdecoder::CUVIDdecoder( uint32_t width,
 	pdci->target_rect.right   = width;
 	pdci->target_rect.bottom  = height;
 
-	cuvidCreateDecoder( &decoder, pdci );
+	cuErr( cuvidCreateDecoder( &decoder, pdci ) );
 }
 
 CUVIDdecoder::~CUVIDdecoder( void )
 {
 	delete pdci;
-	cuvidDestroyDecoder( decoder );
+	cuErr( cuvidDestroyDecoder( decoder ) );
 }
 
 int32_t CUVIDdecoder::getDecodedFrame( CUVIDPICPARAMS* picParams, int32_t ( * cuda_callback )( const CUdeviceptr, uint32_t pitch ) )
@@ -70,21 +85,21 @@ int32_t CUVIDdecoder::getDecodedFrame( CUVIDPICPARAMS* picParams, int32_t ( * cu
 	uint32_t    pitch;
 
 	// decode frame
-	cuvidDecodePicture( decoder, picParams );
+	cuErr( cuvidDecodePicture( decoder, picParams ) );
 
 	// make sure there's a gap between decode and map
 	if( idx < DECODE_GAP )
 		return 2; // decoder not far enough ahead (non-fatal)
 
 	// map frame
-	cuvidMapVideoFrame( decoder, idx - DECODE_GAP, &devPtr, &pitch, &junkVPP );
+	cuErr( cuvidMapVideoFrame( decoder, idx - DECODE_GAP, &devPtr, &pitch, &junkVPP ) );
 
 	// run callback
 	int32_t err = cuda_callback( devPtr, pitch );
 	if( 0 != err ) std::cerr << "error " << err << " in cuda_callback" << endl;
 
 	// unmap frame
-	cuvidUnmapVideoFrame( decoder, devPtr );
+	cuErr( cuvidUnmapVideoFrame( decoder, devPtr ) );
 
 	return 0;
 }

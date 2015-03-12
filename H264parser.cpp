@@ -26,6 +26,17 @@ H264parser::H264parser( BitPos in_pos ): pos( in_pos )
 
 	// slice data offsets, one for each slice header
 	SDOs = ( uint32_t* )malloc( DEFAULT_SH_COUNT * sizeof( uint32_t ) );
+
+	// nullptr inits
+	SPS.seq_scaling_list_present_flag = NULL;
+	SPS.offset_for_ref_frame          = NULL;
+
+	PPS.run_length_minus1             = NULL;
+	PPS.top_left                      = NULL;
+	PPS.bottom_right                  = NULL;
+	PPS.slice_group_id                = NULL;
+	PPS.pic_scaling_list_present_flag = NULL;
+
 }
 
 // destructor only frees dynamic memory allocations
@@ -53,6 +64,16 @@ slice_header* H264parser::makeSliceHeader( void )
 	retSH->pRPLM = new ref_pic_list_mod;
 	retSH->pPWT  = new pred_weight_table;
 	retSH->pDRPM = new dec_ref_pic_mark;
+
+	// nullptr inits
+	retSH->pPWT->luma_weight_l0   = NULL;
+	retSH->pPWT->luma_offset_l0   = NULL;
+	retSH->pPWT->chroma_weight_l0 = NULL;
+	retSH->pPWT->chroma_offset_l0 = NULL;
+	retSH->pPWT->luma_weight_l1   = NULL;
+	retSH->pPWT->luma_offset_l1   = NULL;
+	retSH->pPWT->chroma_weight_l1 = NULL;
+	retSH->pPWT->chroma_offset_l1 = NULL;
 
 	return retSH;
 }
@@ -545,6 +566,9 @@ void H264parser::predWeightTable( uint8_t nal_ref_idc, uint8_t nal_type )
 	SH[ SHidx ]->pPWT->chroma_weight_l0 = ( int32_t** )realloc( SH[ SHidx ]->pPWT->chroma_weight_l0, SH[ SHidx ]->num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
 	SH[ SHidx ]->pPWT->chroma_offset_l0 = ( int32_t** )realloc( SH[ SHidx ]->pPWT->chroma_offset_l0, SH[ SHidx ]->num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
 
+	// memset( SH[ SHidx ]->pPWT->chroma_weight_l0, 0, SH[ SHidx ]->num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
+	// memset( SH[ SHidx ]->pPWT->chroma_offset_l0, 0, SH[ SHidx ]->num_ref_idx_l0_active_minus1 * sizeof( int32_t* ) );
+
 	for ( int i = 0; i < SH[ SHidx ]->num_ref_idx_l0_active_minus1; ++i )
 	{
 		SH[ SHidx ]->pPWT->luma_weight_l0_flag             = uv( 1 );
@@ -581,6 +605,9 @@ void H264parser::predWeightTable( uint8_t nal_ref_idc, uint8_t nal_type )
 
 		SH[ SHidx ]->pPWT->chroma_weight_l1 = ( int32_t** )realloc( SH[ SHidx ]->pPWT->chroma_weight_l1, SH[ SHidx ]->num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
 		SH[ SHidx ]->pPWT->chroma_offset_l1 = ( int32_t** )realloc( SH[ SHidx ]->pPWT->chroma_offset_l1, SH[ SHidx ]->num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
+
+		// memset( SH[ SHidx ]->pPWT->chroma_weight_l1, 0, SH[ SHidx ]->num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
+		// memset( SH[ SHidx ]->pPWT->chroma_offset_l1, 0, SH[ SHidx ]->num_ref_idx_l1_active_minus1 * sizeof( int32_t* ) );
 
 		for ( int i = 0; i < SH[ SHidx ]->num_ref_idx_l1_active_minus1; ++i )
 		{

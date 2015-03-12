@@ -17,7 +17,7 @@ inline void throwGpuError( cudaError_t error, char* file, int32_t line )
 	}
 }
 
-__global__ void dNV12toRGBA( const uint8_t*, uint8_t*, const uint32_t, const uint32_t, const uint32_t, const uint32_t );
+__global__ void dNV12toRGBA( const uint8_t*, uint8_t*, const uint32_t, uint32_t, const uint32_t, const uint32_t );
 int32_t hNV12toRGBA( const uint8_t*, uint8_t**, const uint32_t, uint32_t*, const uint32_t, const uint32_t );
 
 __global__ void dNV12toBW( const uint8_t*, uint8_t*, const uint32_t, const uint32_t, const uint32_t, const uint32_t );
@@ -30,8 +30,8 @@ int32_t hNV12toRGBA( const uint8_t* dImage, uint8_t** dImageOut,
 	const uint32_t width,
 	const uint32_t height )
 {
-	if( NULL == *dImageOut ) // output not yet allocated
-		cuErrChk( cudaMallocPitch( ( void** )dImageOut, ( size_t* )pitchOut, ( size_t )width, ( size_t )height ) );
+	// if( NULL == *dImageOut ) // output not yet allocated
+	// 	cuErrChk( cudaMallocPitch( ( void** )dImageOut, ( size_t* )pitchOut, ( size_t )width, ( size_t )height ) );
 
 	dim3 block( BLOCK_WIDTH, BLOCK_HEIGHT );
 	dim3 grid( 0, 0 );
@@ -72,10 +72,25 @@ int32_t hNV12toBW( const uint8_t* dImage, uint8_t** dImageOut,
 // device-side
 
 __global__ void dNV12toRGBA( const uint8_t* dImage, uint8_t* dImageOut,
-	const uint32_t pitch, const uint32_t pitchOut,
+	const uint32_t pitch, uint32_t pitchOut,
 	const uint32_t width,
 	const uint32_t height )
 {
+	uint32_t xIdx = threadIdx.x + blockIdx.x * blockDim.x;
+	uint32_t yIdx = threadIdx.y + blockIdx.y * blockDim.y;
+
+	pitchOut = ( ( 0 != pitchOut ) ? pitchOut : width * 4 );
+
+	if( xIdx < width && yIdx < height )
+	{
+		uint32_t inIdx  = xIdx * 4 + yIdx * pitch;
+		uint32_t outIdx = xIdx * 4 + yIdx * pitchOut;
+
+		dImageOut[ outIdx + 0 ] = 0;
+		dImageOut[ outIdx + 1 ] = 127;
+		dImageOut[ outIdx + 2 ] = 255;
+		dImageOut[ outIdx + 3 ] = 255;
+	}
 
 	return;
 }
@@ -88,12 +103,12 @@ __global__ void dNV12toBW( const uint8_t* dImage, uint8_t* dImageOut,
 	uint32_t xIdx = threadIdx.x + blockIdx.x * blockDim.x;
 	uint32_t yIdx = threadIdx.y + blockIdx.y * blockDim.y;
 
-	if( xIdx < width && yIdx < height )
+	if( xIdx < 100/*width*/ && yIdx < 100/*height*/ )
 	{
 		uint32_t inIdx  = xIdx + yIdx * pitch;
 		uint32_t outIdx = xIdx + yIdx * pitchOut;
 
-		dImageOut[ outIdx ] = 255; //dImage[ inIdx ];
+		dImageOut[ outIdx ] = 127;//dImage[ inIdx ];
 	}
 
 	return;

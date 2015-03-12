@@ -21,10 +21,11 @@ public:
 	uint8_t readByte( void );
 
 	bool readBitReverse( void );
+	
+	void advance( void );
 
 private:
 
-	void advance( void );
 	void retreat( void );
 
 	uint8_t* byte;
@@ -35,6 +36,7 @@ private:
 // H264parser
 
 #include <cuviddec.h> // only included here for friend functions
+#include <cstring>
 
 #include "RBSP_structs.h"
 
@@ -52,8 +54,6 @@ public:
 	void setPos( BitPos position );
 
 	void parseFrame( const uint8_t* start, uint32_t payload_size );
-
-	// CUVIDPICPARAMS*  cuvidPicParams; // to be removed
 
 private:
 
@@ -178,7 +178,7 @@ private:
 #define DECODE_SURFACES   8 // higher numbers = more memory usage
 #define OUTPUT_SURFACES   8 // lower  numbers = possible slowdown
 
-#define DECODE_GAP        0 // number of frames decode should be ahead of map
+#define DECODE_GAP        2 // number of frames decode should be ahead of map
 
 #define CUVID_CODEC       cudaVideoCodec_H264
 #define CUVID_CHROMA      cudaVideoChromaFormat_422
@@ -199,7 +199,6 @@ public:
 	CUVIDdecoder( uint32_t width, uint32_t height, CUVIDdecoder_fmt );
 	~CUVIDdecoder( );
 
-	// can't decide whether or not to split decode and map into two methods
 	int32_t getDecodedFrame( CUVIDPICPARAMS*, int32_t ( * cuda_callback )( const CUdeviceptr, uint32_t pitch ) );
 
 private:
@@ -216,6 +215,7 @@ private:
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
 #define GL_VER_MAJ 3 // openGL version 3.2
@@ -233,11 +233,10 @@ private:
 #define WINDOW_HEIGHT 480
 #endif //---
 
-#ifdef GLFW_RESIZEABLE // not worrying about resizing now
-#undef GLFW_RESIZEABLE
-#endif
+#define GLFW_RESIZEABLE
 
-#define MAX_SHADERS   2
+#define VERTEX_SOURCE_PATH   "shaders/vert.glsl"
+#define FRAGMENT_SOURCE_PATH "shaders/frag.glsl"
 
 typedef enum _GLcolorMode
 {
@@ -245,14 +244,16 @@ typedef enum _GLcolorMode
 	GLcolor_RGBA
 } GLcolorMode;
 
+// functions from main
+std::string loadTxtFileAsString( const char* );
+void cleanUp( void );
+
 class GLviewer
 {
 public:
 
 	GLviewer( uint32_t width, uint32_t height, GLcolorMode );
 	~GLviewer( void );
-
-	int32_t writeToOutput( int32_t ( * )( uint8_t*, uint32_t, uint32_t, bool ) );
 
 	int32_t mapOutputImage( uint8_t** );
 	int32_t unmapOutputImage( void );
@@ -263,13 +264,29 @@ private:
 
 	GLFWwindow* window;
 	
+	cudaGraphicsResource_t cudaGfxPBO;
+	cudaStream_t cudaStream;
+
 	GLuint pbo; // pixel buffer object - the buffer CUDA writes images to
 	GLuint tex; // texture - what GL renders
+	GLuint vbo; // vertices - texture destination
+
+	GLuint vao; // vertex attrib array
+
+	GLuint vtxShd, frgShd; // shaders
+	GLuint shaders; // shader program
 
 	GLcolorMode colorMode;
 
 	uint32_t tex_pboWidth;
 	uint32_t tex_pboHeight;
+
+	void checkShaderCompile( void );
+
+	// static because GLFW is a C library
+	static void key_callback( GLFWwindow*, int key, int scancode, int action, int mods );
+	static void windowSize_callback( GLFWwindow*, int width, int height );
+	static void windowClose_callback( GLFWwindow* );
 
 };
 
