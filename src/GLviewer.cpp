@@ -1,10 +1,12 @@
 // This class is meant to simplify the display of CUDA images with openGL
+#define GLEW_STATIC
 
+// C++
 #include <iostream>
-#include <string.h>
+#include <cstring> // for memset()
 
-#include "inc/constants.h"
-#include "inc/classes.h"
+// header
+#include "inc/GLviewer.h"
 
 using std::cout;
 using std::endl;
@@ -12,7 +14,7 @@ using std::string;
 
 // cuda error checking
 #define cudaErr(err) cudaError( err, __FILE__, __LINE__ )
-inline void cudaError( cudaError_t err, const char* file, uint32_t line, bool abort=true )
+inline void cudaError( cudaError_t err, const char file[], uint32_t line, bool abort=true )
 {
     if( cudaSuccess != err )
     {
@@ -23,8 +25,9 @@ inline void cudaError( cudaError_t err, const char* file, uint32_t line, bool ab
 }
 
 // gl error checking
+// don't set abort to true unless you absolutely need to
 #define glErr( ) glError( glGetError( ), __FILE__, __LINE__ )
-inline void glError( GLenum err, const char* file, uint32_t line, bool abort=false )
+inline void glError( GLenum err, const char file[], uint32_t line, bool abort=false )
 {
     if( GL_NO_ERROR != err )
     {
@@ -34,62 +37,77 @@ inline void glError( GLenum err, const char* file, uint32_t line, bool abort=fal
     }
 }
 
-GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
+// static initializations
+void ( * GLviewer::pfnAppExit )( void ) = NULL;
+bool GLviewer::fullscreen = false;
+bool GLviewer::color = false;
+
+GLviewer::GLviewer( uint32_t in_texWidth, uint32_t in_texHeight, uint32_t in_windowWidth, uint32_t in_windowHeight, uint32_t flags, void ( * in_fn_appExit )( void ) )
 {
-	tex_pboWidth = width;
-	tex_pboHeight = height;
+	// make use of arguments
+	texWidth = in_texWidth;
+	texHeight = in_texHeight;
+	windowWidth = in_windowWidth;
+	windowHeight = in_windowHeight;
 
-	colorMode = mode;
+	fullscreen = ( 0 != ( flags & GLviewer_fullscreen ) );
+	color = ( 0 != ( flags & GLviewer_color ) );
 
+	pfnAppExit = in_fn_appExit;
+
+	// load shader source files into GLchar arrays
 	string vtxString, frgString;
 	vtxString = loadTxtFileAsString( VERTEX_SOURCE_PATH );
 	frgString = loadTxtFileAsString( FRAGMENT_SOURCE_PATH );
 
-	const GLchar* vtxSrc = vtxString.c_str( );
-	const GLchar* frgSrc = frgString.c_str( );
+	const GLchar* const vtxSrc = vtxString.c_str( );
+	const GLchar* const frgSrc = frgString.c_str( );
 
 /////////////////////////////////////////////////
 
+	// set up GLFW openGL context handling library
 	glfwInit( );
 
+	// set openGL version and prevent use of deprecated openGL functionality
 	glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, GL_VER_MAJ );
 	glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, GL_VER_MIN );
 	glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 	glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 
+	// option to set whether window can be resized (setting to false may have adverse effects in fullscreen)
 	#ifdef GLFW_RESIZEABLE
 	glfwWindowHint( GLFW_RESIZABLE, GL_TRUE );
 	#else
 	glfwWindowHint( GLFW_RESIZABLE, GL_FALSE );
 	#endif
 
-	#ifdef FULLSCREEN
-	window = glfwCreateWindow( WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, glfwGetPrimaryMonitor( ), NULL);
-	#else
-	window = glfwCreateWindow( WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, NULL, NULL );
-	#endif
+	// open the window
+	if( fullscreen )
+		window = glfwCreateWindow( windowWidth, windowHeight, WINDOW_NAME, glfwGetPrimaryMonitor( ), NULL);
+	else
+		window = glfwCreateWindow( windowWidth, windowHeight, WINDOW_NAME, NULL, NULL );
 
 	glfwMakeContextCurrent( window );
 
 /////////////////////////////////////////////////
 
+	// tell GLFW about the event callbacks
 	glfwSetKeyCallback( window, ( GLFWkeyfun )&GLviewer::key_callback );
 	glfwSetWindowSizeCallback( window, ( GLFWwindowsizefun )&GLviewer::windowSize_callback );
 	glfwSetWindowCloseCallback( window, ( GLFWwindowclosefun )&GLviewer::windowClose_callback );
 
 /////////////////////////////////////////////////
 
-	glewExperimental = GL_TRUE;
-	glewInit( );
-	
+	glewExperimental = GL_TRUE; // force GLEW to use latest GL functionality
+	glewInit( ); // expected to cause "Unknown Error"
 	glErr( );
 
-	// set cuda context
+	// explicitly open cuda context
 	cudaSetDevice( 0 );
 
 /////////////////////////////////////////////////
 
-	// set up vertices for texture
+	// set up default vertices for texture
 	GLfloat vertices[] = {
 	//   X      Y     U     V
 		-1.0f,  1.0f, 0.0f, 0.0f, // top left
@@ -98,16 +116,12 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 
 		-1.0f, -1.0f, 0.0f, 1.0f, // bottom left
 		 1.0f, -1.0f, 1.0f, 1.0f, // bottom right
-		 1.0f,  1.0f, 1.0f, 0.0f // top right
+		 1.0f,  1.0f, 1.0f, 0.0f  // top right
 	};
-
-	GLbyte pboinit[ width * height * ( ( GLcolor_BW == mode ) ? 1 : 4 ) ];
-	memset( pboinit, 0, sizeof( pboinit ) / 3 );
-	memset( pboinit + sizeof( pboinit ) / 3, 127, sizeof( pboinit ) / 3 );
-	memset( pboinit + 2 * sizeof( pboinit ) / 3, 255, sizeof( pboinit ) / 3 );
 
 /////////////////////////////////////////////////
 
+	// initialize buffers & texture
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 
@@ -117,13 +131,12 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 
 	glGenBuffers( 1, &pbo );
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, pbo );
-	glBufferData( GL_PIXEL_UNPACK_BUFFER, width * height * ( ( GLcolor_BW == mode ) ? 1 : 4 ), pboinit, GL_STREAM_DRAW );
+	glBufferData( GL_PIXEL_UNPACK_BUFFER, texWidth * texHeight * ( color ? 4 : 1 ), NULL, GL_STREAM_DRAW );
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
 
-	// glEnable( GL_TEXTURE_2D );
 	glGenTextures( 1, &tex );
 	glBindTexture( GL_TEXTURE_2D, tex );
-	glTexImage2D( GL_TEXTURE_2D, 0, ( ( GLcolor_BW == mode ) ? GL_RED : GL_RGBA ), width, height, 0, ( ( GLcolor_BW == mode ) ? GL_RED : GL_RGBA ), GL_UNSIGNED_BYTE, NULL );
+	glTexImage2D( GL_TEXTURE_2D, 0, ( color ? GL_RGBA : GL_RED ), texWidth, texHeight, 0, ( color ? GL_RGBA : GL_RED ), GL_UNSIGNED_BYTE, NULL );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
@@ -131,10 +144,12 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 
 /////////////////////////////////////////////////
 
+	// get a CUDA graphics resource to the PBO
 	cudaErr( cudaGraphicsGLRegisterBuffer( &cudaGfxPBO, pbo, cudaGraphicsRegisterFlagsNone ) );
 
 /////////////////////////////////////////////////
 
+	// compile shader source strings into a shader program
 	vtxShd = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vtxShd, 1, &vtxSrc, NULL );
 	glCompileShader( vtxShd );
@@ -149,6 +164,7 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 	glAttachShader( shaders, vtxShd );
 	glAttachShader( shaders, frgShd );
 
+	// implicit in openGL if this is the only "out" in frag source
 	glBindFragDataLocation( shaders, 0, "outColor" );
 
 	glLinkProgram( shaders );
@@ -158,6 +174,7 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 
 /////////////////////////////////////////////////
 
+	// inform openGL about vertex buffer format
 	GLuint posAtt = glGetAttribLocation( shaders, "position" );
 	glEnableVertexAttribArray( posAtt );
 	glVertexAttribPointer( posAtt, 2, GL_FLOAT, GL_FALSE, 4 * sizeof( GLfloat ), 0 );
@@ -170,11 +187,15 @@ GLviewer::GLviewer( uint32_t width, uint32_t height, GLcolorMode mode )
 
 /////////////////////////////////////////////////
 
+	// set black as "blank" color
 	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 }
 
 GLviewer::~GLviewer( void )
 {
+	// must unregister from CUDA before deleting from openGL
+	cudaErr( cudaGraphicsUnregisterResource( cudaGfxPBO ) );
+
 	glDeleteBuffers( 1, &pbo );
 	glDeleteBuffers( 1, &vbo );
 	glDeleteTextures( 1, &tex );
@@ -186,18 +207,21 @@ GLviewer::~GLviewer( void )
 	glfwDestroyWindow( window );
 }
 
-int32_t GLviewer::mapOutputImage( uint8_t** pDest )
+int32_t GLviewer::mapDispImage( void** pDest )
 {
-	size_t size; // trash it
+	// don't send back the size of the mapped buffer
+	size_t trash;
 
+	// map PBO from openGL and get a CUDA device pointer to it
 	cudaErr( cudaGraphicsMapResources( 1, &cudaGfxPBO, 0 ) );
-	cudaErr( cudaGraphicsResourceGetMappedPointer( ( void** )pDest, &size, cudaGfxPBO ) );
+	cudaErr( cudaGraphicsResourceGetMappedPointer( pDest, &trash, cudaGfxPBO ) );
 
 	return 0;
 }
 
-int32_t GLviewer::unmapOutputImage( void )
+int32_t GLviewer::unmapDispImage( void )
 {
+	// release PBO to openGL
 	cudaErr( cudaGraphicsUnmapResources( 1, &cudaGfxPBO, 0 ) );
 
 	return 0;
@@ -206,19 +230,33 @@ int32_t GLviewer::unmapOutputImage( void )
 // rework to use proper openGL
 int32_t GLviewer::display( void )
 {
+	// bind texture and PBO
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, pbo );
 	glBindTexture( GL_TEXTURE_2D, tex );
 
-	glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, tex_pboWidth, tex_pboHeight, ( ( GLcolor_BW == colorMode ) ? GL_RED : GL_RGBA ), GL_UNSIGNED_BYTE, NULL );
+	// copy PBO to texture
+	glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, texWidth, texHeight, ( color ? GL_RGBA : GL_RED ), GL_UNSIGNED_BYTE, NULL );
 
+	// unbind PBO (texture needed for glDrawArrays)
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
 
+	// main draw
 	glClear( GL_COLOR_BUFFER_BIT );
 	glDrawArrays( GL_TRIANGLES, 0, 6 );
 	glfwSwapBuffers( window );
-	glfwPollEvents( );
+
+	// finally unbind texture
+	glBindTexture( GL_TEXTURE_2D, 0 );
 
 	glErr( );
+
+	return 0;
+}
+
+// call this method in application's main loop to respond to input
+int32_t GLviewer::loop( void )
+{
+	glfwPollEvents( );
 
 	return 0;
 }
@@ -258,33 +296,32 @@ void GLviewer::key_callback( GLFWwindow* cb_window, int key, int scancode, int a
 		{
 			case GLFW_KEY_ESCAPE:
 
-				#ifdef FULLSCREEN
-				cleanUp( ); // end the program
-				exit( 0 );
-				#endif
+				// end on ESC in full screen
+				if( fullscreen ) pfnAppExit( );
 			
 			break;
 
 			case GLFW_KEY_F4:
 
+				// end on alt+f4 always
 				if( GLFW_PRESS == glfwGetKey( cb_window, GLFW_KEY_LEFT_ALT ) || GLFW_PRESS == glfwGetKey( cb_window, GLFW_KEY_RIGHT_ALT ) )
-					cleanUp( );
-					exit( 0 );
+					pfnAppExit( );
 			
 			default:
 			break;
 		}
 	}
-	else if( GLFW_RELEASE == action )
-	{
+	// else if( GLFW_RELEASE == action )
+	// {
 
-	}
-	else if( GLFW_REPEAT == action )
-	{
+	// }
+	// else if( GLFW_REPEAT == action )
+	// {
 
-	}
+	// }
 }
 
+// need to call the instance attached to cb_window
 void GLviewer::windowSize_callback( GLFWwindow* cb_window, int width, int height )
 {
 	// I think this does a costly framebuffer reallocation on every call.
@@ -294,8 +331,5 @@ void GLviewer::windowSize_callback( GLFWwindow* cb_window, int width, int height
 
 void GLviewer::windowClose_callback( GLFWwindow* cb_window )
 {
-	#ifndef FULLSCREEN
-	cleanUp( );
-	exit( 0 );
-	#endif
+	pfnAppExit( );
 }

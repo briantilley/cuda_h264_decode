@@ -4,8 +4,7 @@
 
 #include <iostream>
 
-#include "inc/constants.h"
-#include "inc/classes.h"
+#include "inc/V4L2stream.h"
 
 using std::cout;
 using std::endl;
@@ -21,9 +20,8 @@ V4L2stream::~V4L2stream( void )
 	close( fd );
 }
 
-// initialize the stream object, all V4L2 specific code
-// will change given width and height to actual V4L2 setting
-// some hardcoded magic values here
+// initializing a device in V4L2 calls is simply a series of ioctl calls
+// mostly pulled from online tutorials and V4L2 API specification
 void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device, uint32_t in_numBufs )
 {
 	width = *in_width;
@@ -31,6 +29,7 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 	device = in_device;
 	numBufs = in_numBufs;
 
+	// open device file
 	fd = open( device.c_str( ), O_RDWR );
 	if( -1 == fd )
 	{
@@ -38,6 +37,7 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 		exit( 1 );
 	}
 
+	// wuery capabilites (suggested by V4L2)
 	if( -1 == xioctl( fd, VIDIOC_QUERYCAP, &device_caps) )
 	{
 		std::cerr << "error while querying caps" << endl;
@@ -47,9 +47,10 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 	format.type                  = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	format.fmt.pix.width         = width;
 	format.fmt.pix.height        = height;
-	format.fmt.pix.pixelformat   = V4L2_PIX_FMT_H264;
+	format.fmt.pix.pixelformat   = PIXEL_FMT;
 	format.fmt.pix.field         = V4L2_FIELD_NONE;
 
+	// set video format
 	if( -1 == xioctl( fd, VIDIOC_S_FMT, &format ) )
 	{
 		std::cerr << "error while setting format" << endl;
@@ -71,6 +72,7 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 	ext_ctrls.controls[ 1 ].id     = V4L2_CID_EXPOSURE_AUTO_PRIORITY;
 	ext_ctrls.controls[ 1 ].value  = 0;
 
+	// disable auto exposure (limits framerate)
 	if( -1 == xioctl( fd, VIDIOC_S_EXT_CTRLS, &ext_ctrls ) )
 	{
 		std::cerr << "error while setting controls" << endl;
@@ -81,6 +83,7 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 	request_bufs.type                  = format.type;
 	request_bufs.memory                = V4L2_MEMORY_MMAP;
 
+	// request input buffers for webcam data
 	if( -1 == xioctl( fd, VIDIOC_REQBUFS, &request_bufs ) )
 	{
 		std::cerr << "error while requesting buffers" << endl;
@@ -95,6 +98,7 @@ void V4L2stream::init( uint32_t* in_width, uint32_t* in_height, string in_device
 
 	buf_array = ( array_buf* )malloc( sizeof( array_buf ) * numBufs );
 
+	// make an array of buffers in V4L2 and enqueue them to prepare for stream on
 	for(int i = 0; i < numBufs; ++i)
 	{
 		buffer.index = i;
@@ -142,8 +146,9 @@ void V4L2stream::off( void )
 	}
 }
 
-// retrieve one frame from V4L2, run the processing callback on the data,
-// and give the frame buffer back to V4L2
+// retrieve one frame from V4L2
+// run the provided callback on the data,
+// give the frame buffer back to V4L2
 void V4L2stream::getCodedFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 {
 	
@@ -164,15 +169,4 @@ void V4L2stream::getCodedFrame( int ( *ps_callback )( uint8_t*, uint32_t ) )
 
 	++buffer.index; buffer.index %= numBufs;
 
-}
-
-// ioctl wrapper function
-int32_t V4L2stream::xioctl( int32_t file_desc, int32_t request, void* argp )
-{
-	int32_t retVal;
-
-	do retVal = ioctl( file_desc, request, argp );
-	while( -1 == retVal && EINTR == errno );
-
-	return retVal;
 }
