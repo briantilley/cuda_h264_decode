@@ -40,7 +40,6 @@ inline void cuError( CUresult err, const char* file, uint32_t line, bool abort=t
 {
     if( CUDA_SUCCESS != err )
     {
-        std::cerr << "caugt an error" << endl;
         const char* str;
         cuGetErrorName( err, &str );
 
@@ -143,13 +142,31 @@ int dec_callback( void *pUserData, CUVIDPICPARAMS* pPicParams )
 
 int disp_callback( void *pUserData, CUVIDPARSERDISPINFO* pParDispInfo )
 {
+    // manage values for the cuvid display image
     int32_t PicIdx = pParDispInfo->picture_index;
-    CUdeviceptr devPtr;
-    uint32_t pitch;
+    CUdeviceptr src;
+    uint32_t srcPitch;
     CUVIDPROCPARAMS trashVPP;
 
-    cuErr( cuvidMapVideoFrame( cuDecoder, PicIdx, &devPtr, &pitch, &trashVPP ) );
-    cuErr( cuvidUnmapVideoFrame( cuDecoder, devPtr ) );
+    // manage values for the cuda-gl output image
+    uint8_t* dest = NULL;
+    uint32_t destPitch = 0;
+
+    // map the cuvid-frame
+    cuErr( cuvidMapVideoFrame( cuDecoder, PicIdx, &src, &srcPitch, &trashVPP ) );
+
+    // map the cuda-gl frame
+    // process & copy cuvid frame to cuda-gl
+    // unmap cuda-gl frame
+    viewer->mapOutputImage( &dest );
+    hNV12toRGBA( ( uint8_t* )src, &dest, srcPitch, &destPitch, width, height );
+    viewer->unmapOutputImage( );
+
+    // display cuda-gl image
+    viewer->display( );
+
+    // unmap cuvid image
+    cuErr( cuvidUnmapVideoFrame( cuDecoder, src ) );
 
     return 1; // unfortunately, 1 is no error and 0 is error
 }
@@ -166,15 +183,6 @@ int main( int argc, char** argv )
 	stream = new V4L2stream( );
 	stream->init( &width, &height, DEVICE, INPUT_SURFACES );
 
-	// // create an H264parser object
-    // // using CUVID parser in this git branch
-	// parser = new H264parser( BitPos( NULL, 0 ) );
-
-	// initializing CUVIDPICPARAMS, consider putting struct in decoder class
-	// picParams = new CUVIDPICPARAMS;
-	// picParams->CurrPicIdx = -1;
-	// clearCuvidDPB( picParams );
-
     // create a CUVIDdecoder object
     decoder = new CUVIDdecoder( cudaVideoCodec_H264, seq_callback, dec_callback, disp_callback );
     // decoder = new CUVIDdecoder( WIDTH, HEIGHT, CUVIDdecoder_H264 );
@@ -183,7 +191,7 @@ int main( int argc, char** argv )
     viewer = new GLviewer( width, height, GLcolor_RGBA );
 
 	stream->on( );
-	/*while(true)*/for( int i = 0; i < 1800; ++i) // 60 seconds
+	while(true)//for( int i = 0; i < 1800; ++i) // 60 seconds
     {
     	stream->getCodedFrame( &input_callback );
     }

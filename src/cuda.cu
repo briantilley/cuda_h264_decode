@@ -83,13 +83,13 @@ __global__ void dNV12toRGBA( const uint8_t* dImage, uint8_t* dImageOut,
 
 	if( xIdx < width && yIdx < height )
 	{
-		uint32_t inIdx  = xIdx * 4 + yIdx * pitch;
+		uint32_t inIdx  = xIdx /** 4*/ + yIdx * pitch;
 		uint32_t outIdx = xIdx * 4 + yIdx * pitchOut;
 
-		dImageOut[ outIdx + 0 ] = 0;
-		dImageOut[ outIdx + 1 ] = 127;
-		dImageOut[ outIdx + 2 ] = 255;
-		dImageOut[ outIdx + 3 ] = 255;
+		dImageOut[ outIdx + 0 ] = dImage[ inIdx ];
+		dImageOut[ outIdx + 1 ] = dImage[ inIdx ];
+		dImageOut[ outIdx + 2 ] = dImage[ inIdx ];
+		dImageOut[ outIdx + 3 ] = dImage[ inIdx ];
 	}
 
 	return;

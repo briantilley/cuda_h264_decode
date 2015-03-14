@@ -245,7 +245,7 @@ private:
 
 #define WINDOW_NAME "decode2"
 
-// #define FULLSCREEN
+#define FULLSCREEN
 
 #ifdef FULLSCREEN //---
 #define WINDOW_WIDTH  1920
