@@ -25,7 +25,6 @@ inline void cuError( CUresult err, const char file[], uint32_t line, bool abort=
 }
 
 // make a simple cuvid parser object in the constructor
-// create a decoder upon first parse
 CUVIDparser::CUVIDparser( cudaVideoCodec cudaCodec, PFNVIDSEQUENCECALLBACK fn_vidSeq, PFNVIDDECODECALLBACK fn_vidDec, PFNVIDDISPLAYCALLBACK fn_vidDisp )
 {
 	// create and initialize a params struct to make a CUVID parser object
