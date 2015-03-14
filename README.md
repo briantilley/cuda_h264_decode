@@ -6,3 +6,5 @@ Input video for this application is provided by a Logitech C920.
 
 This code is provided as possible assistance to those looking to implement any of the features I have used, and it is guaranteed to be ugly and written with horrible code practices.
 I'd be happy to offer amateur advice to anyone struggling with these APIs. I do not claim to be an expert, but I'll help where I can.
+
+**NOTICE**: working version of the code is in branch nvidia-parser.
