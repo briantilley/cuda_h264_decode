@@ -197,10 +197,10 @@ int main( int argc, const char* argv[] )
     decoder = new CUVIDparser( cudaVideoCodec_H264, seq_callback, dec_callback, disp_callback );
 
     // create a GLviewer object
-    viewer = new GLviewer( width, height, 1920, 1080, GLviewer_fullscreen | GLviewer_color, appEnd );
+    viewer = new GLviewer( width, height, 640, 360, GLviewer_color, appEnd );
 
 	stream->on( );
-    //for( int i = 0; i < 1800; ++i) // 60 seconds
+    // for( int i = 0; i < 30; ++i) // 1 second
 	while(true)
     {
     	stream->getCodedFrame( input_callback );

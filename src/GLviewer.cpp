@@ -1,4 +1,5 @@
 // This class is meant to simplify the display of CUDA images with openGL
+// In its current state, it can't handle more than one window.
 #define GLEW_STATIC
 
 // C++
@@ -41,6 +42,11 @@ inline void glError( GLenum err, const char file[], uint32_t line, bool abort=fa
 void ( * GLviewer::pfnAppExit )( void ) = NULL;
 bool GLviewer::fullscreen = false;
 bool GLviewer::color = false;
+uint32_t GLviewer::texWidth = 0;
+uint32_t GLviewer::texHeight = 0;
+uint32_t GLviewer::windowWidth = 0;
+uint32_t GLviewer::windowHeight = 0;
+GLuint GLviewer::vbo = 0;
 
 GLviewer::GLviewer( uint32_t in_texWidth, uint32_t in_texHeight, uint32_t in_windowWidth, uint32_t in_windowHeight, uint32_t flags, void ( * in_fn_appExit )( void ) )
 {
@@ -240,6 +246,9 @@ int32_t GLviewer::display( void )
 	// unbind PBO (texture needed for glDrawArrays)
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
 
+	// bind vbo
+	glBindBuffer( GL_ARRAY_BUFFER, vbo );
+
 	// main draw
 	glClear( GL_COLOR_BUFFER_BIT );
 	glDrawArrays( GL_TRIANGLES, 0, 6 );
@@ -247,6 +256,9 @@ int32_t GLviewer::display( void )
 
 	// finally unbind texture
 	glBindTexture( GL_TEXTURE_2D, 0 );
+
+	// unbind vbo
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
 	glErr( );
 
@@ -324,6 +336,55 @@ void GLviewer::key_callback( GLFWwindow* cb_window, int key, int scancode, int a
 // need to call the instance attached to cb_window
 void GLviewer::windowSize_callback( GLFWwindow* cb_window, int width, int height )
 {
+	windowWidth = width;
+	windowHeight = height;
+
+	// adjust vertices to preserve aspect ratio
+	if( ( ( float )windowWidth / windowHeight ) > ( ( float )texWidth / texHeight ) )
+	{
+		// side bordering
+
+		GLfloat absX = ( ( GLfloat )texWidth / windowWidth ) * ( ( GLfloat )windowHeight / texHeight );
+
+		GLfloat vertices[] = {
+		//   X      Y     U     V
+			-absX,  1.0f, 0.0f, 0.0f, // top left
+			 absX,  1.0f, 1.0f, 0.0f, // top right
+			-absX, -1.0f, 0.0f, 1.0f, // bottom left
+
+			-absX, -1.0f, 0.0f, 1.0f, // bottom left
+			 absX, -1.0f, 1.0f, 1.0f, // bottom right
+			 absX,  1.0f, 1.0f, 0.0f  // top right
+		};
+
+		// bind, copy, unbind
+		glBindBuffer( GL_ARRAY_BUFFER, vbo );
+		glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_STATIC_DRAW );
+		glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	}
+	else
+	{
+		// top/bottom bordering
+
+		GLfloat absY = ( ( GLfloat )texHeight / windowHeight ) * ( ( GLfloat )windowWidth / texWidth );
+
+		GLfloat vertices[] = {
+		//   X      Y     U     V
+			-1.0f,  absY, 0.0f, 0.0f, // top left
+			 1.0f,  absY, 1.0f, 0.0f, // top right
+			-1.0f, -absY, 0.0f, 1.0f, // bottom left
+
+			-1.0f, -absY, 0.0f, 1.0f, // bottom left
+			 1.0f, -absY, 1.0f, 1.0f, // bottom right
+			 1.0f,  absY, 1.0f, 0.0f  // top right
+		};
+
+		// bind, copy, unbind
+		glBindBuffer( GL_ARRAY_BUFFER, vbo );
+		glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_STATIC_DRAW );
+		glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	}
+
 	// I think this does a costly framebuffer reallocation on every call.
 	// Find a way to avoid that.
 	glViewport( 0, 0, width, height );

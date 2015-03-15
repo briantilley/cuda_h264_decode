@@ -57,6 +57,13 @@ public:
 	// creation flags
 	static bool fullscreen, color;
 
+	// texture and window sizes
+	static uint32_t windowWidth, windowHeight;
+	static uint32_t texWidth, texHeight;
+
+	// window resize needs vbo access
+	static GLuint vbo;
+
 private:
 	
 	// CUDA refs
@@ -66,16 +73,11 @@ private:
 	GLFWwindow* window; // main context
 	GLuint pbo; // pixel buffer object - the buffer CUDA writes images to
 	GLuint tex; // texture - what GL renders
-	GLuint vbo; // vertices - texture destination
 
 	GLuint vao; // vertex attrib array
 
 	GLuint vtxShd, frgShd; // shaders
 		GLuint shaders; // shader program
-
-	// texture and window widths;
-	uint32_t texWidth, texHeight;
-	uint32_t windowWidth, windowHeight;
 
 	void checkShaderCompile( void );
 
