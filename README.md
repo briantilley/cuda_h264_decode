@@ -1,6 +1,6 @@
 # NOTICE
  
-At the time of writing this, I'm refactoring cuda_h264_decode in the [briantilley/computer-vision](https://github.com/briantilley/computer-vision). The new version will be more modular and simpler to use/modify, so I recommend starting there for code to extend and use in your work.
+At the time of writing this, I'm refactoring cuda_h264_decode in [briantilley/computer-vision](https://github.com/briantilley/computer-vision). The new version will be more modular and simpler to use/modify, so I recommend starting there for code to extend and use in your work.
 
 # cuda_h264_decode
 Created as a self-reference for h264 decoding on NVIDIA GPUs using the NVCUVID API.
